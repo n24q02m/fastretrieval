@@ -1,0 +1,184 @@
+name: Integration
+
+# The integration suite downloads real model weights (~2.78 GiB across five ONNX
+# models) and takes minutes, so it lives in its own workflow rather than as a job in
+# ci.yml -- that is the only way to get a native `paths` filter without pulling in a
+# third-party changed-files action.
+#
+# ci.yml runs `pytest -m "not integration"`, which is why these tests went
+# unexercised for so long: 69 tests that never ran in CI, two of which had been
+# failing since before v1.12.1.
+#
+# The trigger is `tests/**` rather than a narrower glob because the narrower one
+# was wrong. `tests/test_integration*.py` matches test_integration.py and
+# test_integration_q4f16.py but NOT test_custom_reranker_registry.py or
+# test_export.py, which also carry @pytest.mark.integration -- so editing either of
+# those two did not run the suite that covers them. The list also named
+# tests/conftest.py, which does not exist. Enumerating the files that hold
+# integration tests is a list that drifts silently and had already drifted; the
+# directory does not.
+#
+# GitHub-hosted, not self-hosted, deliberately: this repository is public, so
+# pull requests carry code from bots and forks. Public repositories get standard
+# GitHub-hosted runners for free, so there is nothing to trade away, and fork code
+# never touches our own machines.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "qwen3_embed/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/integration.yml"
+  push:
+    branches: [main]
+    paths:
+      - "qwen3_embed/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/integration.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    name: Integration (real models, Python 3.13)
+    runs-on: ubuntu-latest
+    # Provisional, sized for a cold cache. Run 31232142381 was killed at 30 minutes
+    # having produced no readable progress, so there is no measurement yet to tighten
+    # this against; the download and test steps below are split precisely so the next
+    # run yields one. Public repositories get unlimited GitHub-hosted minutes, so a
+    # generous ceiling costs nothing and a too-tight one costs the whole signal.
+    timeout-minutes: 60
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "latest"
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      # Restore and save are separate steps on purpose. The combined `actions/cache`
+      # step writes the cache from a post-job step, and post-job steps are SKIPPED
+      # when a job is cancelled. Run 31232142381 hit the job timeout on a cold cache,
+      # so `Post Cache model weights` never ran, nothing was stored, and the next run
+      # would have started cold as well -- a cache that can never bootstrap itself.
+      # Saving immediately after the download makes the cache independent of how long
+      # the tests take, or whether they pass at all.
+      #
+      # Model weights are immutable, so the key is fixed and the cache is written
+      # once. Bump the version suffix when the set of models the suite pulls changes,
+      # otherwise the new weights are re-downloaded on every run and never cached.
+      - name: Restore model cache
+        id: model-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/qwen3_embed
+          key: qwen3-embed-models-v1
+
+      - name: Install dependencies
+        run: uv sync --python 3.13 --group dev
+
+      # Downloading in its own step also splits the bill: this step's duration is
+      # transfer, the test step's is inference. Run 31232142381 could not tell them
+      # apart because both happened inside one opaque 30-minute block.
+      #
+      # The five model names are the ONNX models `tests/test_integration*.py` and
+      # `tests/test_integration_q4f16.py` construct. The GGUF pair is absent because
+      # `llama-cpp-python` is not installed here (see the note on the test step), so
+      # those tests skip and their weights are never touched.
+      #
+      # Xenova/ms-marco-MiniLM-L-6-v2 is deliberately NOT here even though
+      # tests/test_custom_reranker_registry.py fetches it: it is not a built-in model,
+      # so pre-fetching it would mean duplicating that test's custom registration in
+      # this YAML. At 80 MB against the 2.08 GB already cached it is not worth the
+      # duplication, and drift in this list degrades rather than breaks -- a model
+      # missing here is downloaded by the test that needs it, inside the test budget.
+      - name: Download model weights
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          uv run python - <<'PY'
+          import time
+
+          from qwen3_embed import TextCrossEncoder, TextEmbedding
+
+          EMBEDDINGS = [
+              "n24q02m/Qwen3-Embedding-0.6B-ONNX",
+              "n24q02m/Qwen3-Embedding-0.6B-ONNX-Q4F16",
+          ]
+          RERANKERS = [
+              "n24q02m/Qwen3-Reranker-0.6B-ONNX",
+              "n24q02m/Qwen3-Reranker-0.6B-ONNX-Q4F16",
+              "n24q02m/Qwen3-Reranker-0.6B-ONNX-YesNo",
+          ]
+
+          for cls, names in ((TextEmbedding, EMBEDDINGS), (TextCrossEncoder, RERANKERS)):
+              for name in names:
+                  start = time.monotonic()
+                  cls(name)
+                  print(f"{name}: {time.monotonic() - start:.1f}s", flush=True)
+          PY
+
+      # No `always()` here. The point is to be independent of the TEST step, which
+      # this step already is by sitting before it; running on failure as well would
+      # store a half-finished download under a fixed key, and a fixed key is never
+      # re-fetched -- the suite would restore a broken cache forever.
+      - name: Save model cache
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/qwen3_embed
+          key: qwen3-embed-models-v1
+
+      # The `gguf` extra is deliberately absent from the dev install: llama-cpp-python
+      # 0.3.34 ships an sdist only -- no wheels for any platform -- so installing it
+      # here would mean a from-source C++ build on every cold cache. The 13 tests in
+      # tests/test_integration_gguf.py therefore skip, which is honest: they are not
+      # covered here, and the file's pytest.importorskip reports that.
+      #
+      # PYTHONUNBUFFERED because pytest's progress output is block-buffered when
+      # stdout is a pipe. Run 31232142381 was killed with thirty minutes of progress
+      # still sitting in that buffer: the log showed nothing after "69 selected", so
+      # the timeout could not be attributed to any test. `-v` names each test as it
+      # finishes and `--durations` ranks them, which turns a future timeout into a
+      # reading instead of a mystery.
+      #
+      # The two timeouts are not redundant; they fail in different ways on purpose.
+      # Run 31233596338 had unbuffered `-v` output and STILL printed no test result in
+      # 59 minutes, while the same suite finishes locally in 233s. Something blocks,
+      # and a blocked test can hold the GIL:
+      #
+      #   faulthandler_timeout dumps every thread's stack from C, so it reports even
+      #   when no Python bytecode can run -- but it only reports, it does not unblock.
+      #   --timeout aborts the test so the remaining ones still run, which is what
+      #   turns one run into a full census of what hangs instead of just the first.
+      #
+      # 300s per test is ~85x the local per-test average (233s / 69), so it accuses
+      # only a genuine block, never a slow runner.
+      - name: Run integration tests
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: >-
+          uv run pytest -m integration --tb=short -v --durations=25
+          -o faulthandler_timeout=120 --timeout=300

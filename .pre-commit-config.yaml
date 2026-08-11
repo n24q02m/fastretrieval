@@ -1,0 +1,77 @@
+repos:
+  # ============================================================================
+  # Common Checks
+  # ============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b # v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        name: trim trailing whitespace
+        exclude_types: [image]
+      - id: check-merge-conflict
+        name: check for merge conflicts
+      - id: check-json
+        name: check JSON files
+        types: [json]
+      - id: check-yaml
+        name: check YAML files
+        types: [yaml]
+      - id: check-toml
+        name: check TOML files
+        types: [toml]
+      - id: end-of-file-fixer
+        name: fix end of files
+        exclude_types: [image]
+
+  # ============================================================================
+  # Python
+  # ============================================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 89c421dff2e1026ba12cdb9ebd731f4a83aa8021 # v0.8.6
+    hooks:
+      - id: ruff
+        name: ruff lint
+        args: [--fix, --target-version=py313]
+      - id: ruff-format
+        name: ruff format
+
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty type check
+        entry: mise exec -- uv run ty check --exit-zero-on-warning
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: pytest
+        name: pytest
+        entry: mise exec -- uv run pytest -m "not integration" --tb=short -q
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  # ============================================================================
+  # Commit Message Enforcement
+  # ============================================================================
+  - repo: local
+    hooks:
+      - id: enforce-commit
+        name: Enforce feat and fix commit prefixes
+        entry: bash scripts/enforce-commit.sh
+        language: system
+        stages: [commit-msg]
+
+  # ============================================================================
+  # Content integrity: block ASCII rewriting of Vietnamese diacritics
+  # + Unicode punctuation (em-dash, ellipsis, arrows, smart quotes, emoji).
+  # See scripts/preserve-diacritics.py and feedback_vietnamese_diacritics rule.
+  # ============================================================================
+  - repo: local
+    hooks:
+      - id: preserve-diacritics
+        name: Preserve Vietnamese diacritics + Unicode punctuation
+        entry: python scripts/preserve-diacritics.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]

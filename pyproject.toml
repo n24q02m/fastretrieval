@@ -1,0 +1,99 @@
+[project]
+name = "qwen3-embed"
+version = "1.13.0"
+description = "Lightweight Qwen3 text embedding & reranking via ONNX Runtime and GGUF (fork of fastembed)"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+authors = [{ name = "n24q02m" }]
+keywords = ["vector", "embedding", "reranking", "qwen3", "onnx", "onnxruntime"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "numpy>=2.4.6,<2.5",
+    "onnxruntime>1.20.0; python_version >= '3.11'",
+    "tqdm>=4.70.0",
+    "requests>=2.34.2",
+    # Floor reflects the minimal stable Tokenizer/AddedToken/Encoding/encode_batch
+    # API surface this package actually uses (stable since ~0.13), not "latest".
+    # Keep it low so qwen3-embed stays co-installable with transformers and other
+    # tokenizers consumers (e.g. transformers 5.10.x caps tokenizers<=0.23.0). See #691.
+    "tokenizers>=0.23.1,<1.0",
+    "huggingface-hub>=1.27.0,<2.0",
+    "loguru>=0.7.3",
+]
+
+[project.optional-dependencies]
+gguf = ["llama-cpp-python>=0.3.34"]
+
+[project.urls]
+Homepage = "https://github.com/n24q02m/fastretrieval"
+Repository = "https://github.com/n24q02m/fastretrieval"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "pytest-xdist>=3.8.0",
+    "pytest-timeout>=2.4.0",
+    "syrupy>=5.5.3",
+    "ruff>=0.16.1",
+    "ty>=0.0.65",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["qwen3_embed"]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+tag_format = "v{version}"
+commit_message = "chore(release): v{version}"
+major_on_zero = false
+
+[tool.semantic_release.changelog]
+changelog_file = "CHANGELOG.md"
+
+[tool.semantic_release.remote]
+type = "github"
+
+[tool.ty]
+
+[tool.ty.rules]
+# llama_cpp is an optional dependency (not in default venv)
+unresolved-import = "warn"
+# onnxruntime has incomplete type stubs (SparseTensor union issues)
+possibly-missing-attribute = "warn"
+invalid-argument-type = "warn"
+unresolved-attribute = "warn"
+not-subscriptable = "warn"
+invalid-assignment = "warn"
+# multiprocessing context has dynamic Process attr
+call-non-callable = "warn"
+
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]  # redundant with ruff format
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "integration: tests requiring real ONNX model download (~1.2 GB)",
+]

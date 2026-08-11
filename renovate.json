@@ -1,0 +1,150 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(fix)"
+  ],
+  "schedule": [
+    "before 5am"
+  ],
+  "timezone": "Asia/Ho_Chi_Minh",
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 3,
+  "labels": [
+    "dependencies"
+  ],
+  "rangeStrategy": "bump",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 5am"
+    ],
+    "automerge": true,
+    "automergeType": "pr"
+  },
+  "packageRules": [
+    {
+      "description": "Group minor updates for review (prod scope by default)",
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "groupName": "minor dependencies",
+      "groupSlug": "all-minor"
+    },
+    {
+      "description": "Auto-merge dev-scope minor updates after cooldown",
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "matchDepTypes": [
+        "devDependencies",
+        "dependency-groups",
+        "tool.uv.dev-dependencies",
+        "tool.pdm.dev-dependencies"
+      ],
+      "groupName": "non-major dev dependencies",
+      "groupSlug": "non-major-dev",
+      "automerge": true,
+      "automergeType": "pr",
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "Auto-merge patch updates after cooldown",
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "groupName": "patch dependencies",
+      "groupSlug": "all-patch",
+      "automerge": true,
+      "automergeType": "pr",
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "Auto-merge GitHub Actions digest updates after cooldown",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "digest",
+        "pinDigest"
+      ],
+      "groupName": "github-actions digests",
+      "groupSlug": "gha-digests",
+      "automerge": true,
+      "automergeType": "pr",
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "Pin GitHub Actions to SHA for security",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "pinDigests": true
+    },
+    {
+      "description": "Pin PSR to v10 — block Renovate downgrades",
+      "matchPackagePatterns": [
+        "^python-semantic-release/"
+      ],
+      "matchManagers": [
+        "github-actions"
+      ],
+      "allowedVersions": ">=10.0.0"
+    },
+    {
+      "description": "Disable Python runtime updates (library supports 3.10-3.14)",
+      "matchPackageNames": [
+        "python"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Pin numpy <2.5 -- 2.5.0 dropped Python 3.11 wheels, breaking requires-python >=3.11",
+      "matchPackageNames": [
+        "numpy"
+      ],
+      "allowedVersions": "<2.5.0"
+    },
+    {
+      "description": "Pin Node.js runtime to 24.x",
+      "matchPackageNames": [
+        "node"
+      ],
+      "allowedVersions": ">=24.0.0 <25.0.0"
+    },
+    {
+      "description": "Pin Java runtime to 21.x LTS",
+      "matchPackageNames": [
+        "java"
+      ],
+      "allowedVersions": ">=21.0.0 <22.0.0"
+    },
+    {
+      "description": "Disable runtime version updates from mise (pinned in CLAUDE.md)",
+      "matchManagers": [
+        "mise"
+      ],
+      "matchDepNames": [
+        "python",
+        "node",
+        "java"
+      ],
+      "enabled": false
+    }
+  ],
+  "description": [
+    "Do not set commitMessagePrefix here. semanticCommitType + semanticCommitScope already produce the exact same 'fix(deps):' string (CommitMessage.formatPrefix appends the colon), so it adds nothing -- but Renovate only computes the prefix, and only sets its internal toLowerCase flag, inside `if (semanticCommits === 'enabled' && !commitMessagePrefix)`. Setting it therefore silently disables the lowercasing that commitMessageLowerCase='auto' is supposed to do. That went unnoticed because our own commitMessageAction ('update') is already lowercase; the presets' are not -- lockFileMaintenance uses 'Lock file maintenance', pin/pinDigest use 'Pin', rollback 'Roll back', replacement 'Replace'. Each of those produces a title starting with a capital, which the CI job 'Validate PR title' rejects (subjectPattern ^(?![A-Z]).+$), so the bot PR is born red and can never automerge. Seen here on #962; same fix as mcp-core #715.",
+    "':semanticCommitTypeAll(fix)' must stay in extends. The top-level semanticCommitType: 'fix' below does NOT reliably apply -- packageRules always win over top-level scalars for the fields they touch, and config:recommended extends :semanticPrefixFixDepsChoreOthers, whose wildcard rule sets semanticCommitType 'chore' for every dep while its dependencies/require rule only re-covers prod deps. Any devDependency would keep 'chore', which 'Validate PR title' rejects (repo allows fix/feat only). Removing commitMessagePrefix without this preset would therefore trade a capitalised subject for a chore: prefix. Same fix as mcp-core #724."
+  ],
+  "semanticCommits": "enabled",
+  "commitMessageAction": "update",
+  "commitMessageTopic": "{{depName}}",
+  "semanticCommitType": "fix",
+  "semanticCommitScope": "deps",
+  "golang": {
+    "postUpdateOptions": [
+      "gomodTidy"
+    ]
+  }
+}

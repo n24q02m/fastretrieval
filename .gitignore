@@ -1,0 +1,74 @@
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff / ty
+.ruff_cache/
+
+# Secrets / env
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Fastembed cache
+**/local_cache/
+
+temp/
+
+# Windows device names
+nul
+NUL
+*.tar.gz
+
+# AI Agent
+.jules/
+JULES.md
+
+# Code review knowledge graph
+.code-review-graph/
+
+# AI Assistant / Rules
+.jules/
+.jules
+.superpower/
+superpower/
+superpowers/
+docs/superpowers/
+
+
+# Test coverage artifacts
+coverage.xml
+htmlcov/
+.coverage
+
+# Bot/merge junk artifacts (prevent accidental commits) — 2026-06-07
+*.orig
+*.rej
+*.cover
+*.bak
+/*.patch
+/*.diff

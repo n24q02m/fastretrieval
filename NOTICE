@@ -1,0 +1,11 @@
+qwen3-embed
+Copyright 2025-2026 n24q02m
+
+This product includes software developed as part of fastembed
+(https://github.com/qdrant/fastembed), Copyright 2023 Qdrant,
+licensed under the Apache License, Version 2.0.
+
+This product continues the work previously published as qwen3-embed
+(https://pypi.org/project/qwen3-embed/), Copyright 2025-2026 n24q02m,
+licensed under the Apache License, Version 2.0.
+Code was copied at commit 0d50669acf0dad64e0c05497de397036efcf722a (version 1.13.0).
