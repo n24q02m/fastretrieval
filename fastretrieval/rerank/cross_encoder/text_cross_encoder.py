@@ -2,15 +2,15 @@ from collections.abc import Iterable, Sequence
 from dataclasses import asdict
 from typing import Any
 
-from qwen3_embed.common.model_description import (
+from fastretrieval.common.model_description import (
     BaseModelDescription,
 )
-from qwen3_embed.common.types import Device, OnnxProvider
-from qwen3_embed.rerank.cross_encoder.custom_text_cross_encoder import CustomTextCrossEncoder
-from qwen3_embed.rerank.cross_encoder.gguf_cross_encoder import Qwen3CrossEncoderGGUF
-from qwen3_embed.rerank.cross_encoder.onnx_text_cross_encoder import OnnxTextCrossEncoder
-from qwen3_embed.rerank.cross_encoder.qwen3_cross_encoder import Qwen3CrossEncoder
-from qwen3_embed.rerank.cross_encoder.text_cross_encoder_base import TextCrossEncoderBase
+from fastretrieval.common.types import Device, OnnxProvider
+from fastretrieval.rerank.cross_encoder.custom_text_cross_encoder import CustomTextCrossEncoder
+from fastretrieval.rerank.cross_encoder.gguf_cross_encoder import Qwen3CrossEncoderGGUF
+from fastretrieval.rerank.cross_encoder.onnx_text_cross_encoder import OnnxTextCrossEncoder
+from fastretrieval.rerank.cross_encoder.qwen3_cross_encoder import Qwen3CrossEncoder
+from fastretrieval.rerank.cross_encoder.text_cross_encoder_base import TextCrossEncoderBase
 
 
 class TextCrossEncoder(TextCrossEncoderBase):
@@ -129,7 +129,7 @@ class TextCrossEncoder(TextCrossEncoderBase):
         Returns:
             Iterable of scores for each document
         """
-        from qwen3_embed.common.utils import check_input_length, iter_checked_texts
+        from fastretrieval.common.utils import check_input_length, iter_checked_texts
 
         check_input_length(query)
         docs = iter_checked_texts(documents)
@@ -165,7 +165,7 @@ class TextCrossEncoder(TextCrossEncoderBase):
             >>> print(list(map(lambda x: round(x, 2), scores)))
             [-1.24, -10.6]
         """
-        from qwen3_embed.common.utils import check_input_length
+        from fastretrieval.common.utils import check_input_length
 
         def _check_pairs(ps):
             for q, d in ps:

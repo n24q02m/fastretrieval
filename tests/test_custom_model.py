@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from qwen3_embed.common.model_description import (
+from fastretrieval.common.model_description import (
     DenseModelDescription,
     ModelSource,
     PoolingType,
 )
-from qwen3_embed.common.onnx_model import OnnxOutputContext
-from qwen3_embed.text.custom_text_embedding import CustomTextEmbedding
-from qwen3_embed.text.text_embedding import TextEmbedding
+from fastretrieval.common.onnx_model import OnnxOutputContext
+from fastretrieval.text.custom_text_embedding import CustomTextEmbedding
+from fastretrieval.text.text_embedding import TextEmbedding
 
 
 def _ctx(rows: int, dim: int) -> OnnxOutputContext:
@@ -28,7 +28,7 @@ def test_custom_post_process_honors_dim():
 
 
 def test_custom_model_spec_registers_embedder():
-    from qwen3_embed import CustomModelSpec
+    from fastretrieval import CustomModelSpec
 
     CustomTextEmbedding._SUPPORTED.clear()
     CustomModelSpec(
@@ -50,14 +50,14 @@ def test_custom_model_spec_registers_embedder():
 
 
 def test_custom_model_spec_requires_dim():
-    from qwen3_embed import CustomModelSpec
+    from fastretrieval import CustomModelSpec
 
     with pytest.raises(ValueError, match="dim is required"):
         CustomModelSpec(model_id="Org/no-dim", hf="Org/no-dim").register()
 
 
 def test_custom_registry_survives_serialization():
-    from qwen3_embed.common.model_description import (
+    from fastretrieval.common.model_description import (
         CustomDenseModelDescription,
         ModelSource,
         PoolingType,

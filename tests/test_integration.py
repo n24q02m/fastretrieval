@@ -13,13 +13,13 @@ import sys
 import numpy as np
 import pytest
 
-from qwen3_embed import TextCrossEncoder, TextEmbedding
-from qwen3_embed.common.model_description import (
+from fastretrieval import TextCrossEncoder, TextEmbedding
+from fastretrieval.common.model_description import (
     DenseModelDescription,
     ModelSource,
     PoolingType,
 )
-from qwen3_embed.text.custom_text_embedding import CustomTextEmbedding
+from fastretrieval.text.custom_text_embedding import CustomTextEmbedding
 
 # ---------------------------------------------------------------------------
 # Fixtures (shared model instances -- download once, reuse across tests)

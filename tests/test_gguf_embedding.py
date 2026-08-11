@@ -11,14 +11,14 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from qwen3_embed.text.gguf_embedding import (
+from fastretrieval.text.gguf_embedding import (
     DEFAULT_TASK,
     QUERY_INSTRUCTION_TEMPLATE,
     Qwen3TextEmbeddingGGUF,
     _check_llama_cpp,
 )
 
-# Note: qwen3_embed.text.gguf_embedding imports llama_cpp lazily inside
+# Note: fastretrieval.text.gguf_embedding imports llama_cpp lazily inside
 # functions (see _check_llama_cpp / Qwen3TextEmbeddingGGUF.__init__), not at
 # module import time, so no sys.modules mock is needed just to import it.
 # Each test below that needs llama_cpp to appear "installed" scopes its own
@@ -69,9 +69,7 @@ def test_check_llama_cpp_import_error_with_mock():
 
 def test_check_llama_cpp_exact_message():
     """Test that _check_llama_cpp raises ImportError with the exact expected message."""
-    expected_msg = (
-        "llama-cpp-python is required for GGUF models. Install with: pip install qwen3-embed[gguf]"
-    )
+    expected_msg = "llama-cpp-python is required for GGUF models. Install with: pip install fastretrieval[gguf]"
     with (
         patch.dict(sys.modules, {"llama_cpp": None}),
         pytest.raises(ImportError) as excinfo,
@@ -110,7 +108,7 @@ def _make_mock_llm(embedding_dim: int = 8) -> MagicMock:
 def _make_model(embedding_dim: int = 8, **extra_attrs: Any) -> Qwen3TextEmbeddingGGUF:
     """Create a GGUF model instance with __init__ fully bypassed."""
     with patch(
-        "qwen3_embed.text.gguf_embedding.Qwen3TextEmbeddingGGUF.__init__", return_value=None
+        "fastretrieval.text.gguf_embedding.Qwen3TextEmbeddingGGUF.__init__", return_value=None
     ):
         model = Qwen3TextEmbeddingGGUF()
     model._llm = _make_mock_llm(embedding_dim)
@@ -127,7 +125,7 @@ def _make_model(embedding_dim: int = 8, **extra_attrs: Any) -> Qwen3TextEmbeddin
 class TestGGUFEmbeddingInit:
     def test_init_creates_llm_with_cpu(self, tmp_path: Path):
         """Test __init__ creates Llama with n_gpu_layers=0 for CPU device."""
-        from qwen3_embed.common.types import Device
+        from fastretrieval.common.types import Device
 
         # Create the expected GGUF file so model_path.exists() returns True
         model_file = tmp_path / "qwen3-embedding-0.6b-q4-k-m.gguf"
@@ -140,7 +138,7 @@ class TestGGUFEmbeddingInit:
         with (
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3TextEmbeddingGGUF, "download_model", return_value=str(tmp_path)),
-            patch("qwen3_embed.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
+            patch("fastretrieval.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
         ):
             model = Qwen3TextEmbeddingGGUF(
                 model_name="n24q02m/Qwen3-Embedding-0.6B-GGUF",
@@ -156,7 +154,7 @@ class TestGGUFEmbeddingInit:
 
     def test_init_creates_llm_with_gpu_auto(self, tmp_path: Path):
         """Test __init__ creates Llama with n_gpu_layers=-1 for Device.AUTO."""
-        from qwen3_embed.common.types import Device
+        from fastretrieval.common.types import Device
 
         model_file = tmp_path / "qwen3-embedding-0.6b-q4-k-m.gguf"
         model_file.touch()
@@ -168,7 +166,7 @@ class TestGGUFEmbeddingInit:
         with (
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3TextEmbeddingGGUF, "download_model", return_value=str(tmp_path)),
-            patch("qwen3_embed.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
+            patch("fastretrieval.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
         ):
             Qwen3TextEmbeddingGGUF(
                 model_name="n24q02m/Qwen3-Embedding-0.6B-GGUF",
@@ -190,7 +188,7 @@ class TestGGUFEmbeddingInit:
         with (
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3TextEmbeddingGGUF, "download_model", return_value=str(tmp_path)),
-            patch("qwen3_embed.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
+            patch("fastretrieval.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
         ):
             Qwen3TextEmbeddingGGUF(
                 model_name="n24q02m/Qwen3-Embedding-0.6B-GGUF",
@@ -207,7 +205,7 @@ class TestGGUFEmbeddingInit:
         with (
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3TextEmbeddingGGUF, "download_model", return_value=str(tmp_path)),
-            patch("qwen3_embed.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
+            patch("fastretrieval.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
             pytest.raises(FileNotFoundError, match="GGUF model file not found"),
         ):
             Qwen3TextEmbeddingGGUF(model_name="n24q02m/Qwen3-Embedding-0.6B-GGUF")
@@ -232,7 +230,7 @@ class TestGGUFEmbeddingInit:
         with (
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3TextEmbeddingGGUF, "download_model", return_value=str(tmp_path)),
-            patch("qwen3_embed.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
+            patch("fastretrieval.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
         ):
             Qwen3TextEmbeddingGGUF(model_name="n24q02m/Qwen3-Embedding-0.6B-GGUF", threads=None)
 
@@ -251,7 +249,7 @@ class TestGGUFEmbeddingInit:
         with (
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3TextEmbeddingGGUF, "download_model", return_value=str(tmp_path)),
-            patch("qwen3_embed.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
+            patch("fastretrieval.text.gguf_embedding.define_cache_dir", return_value=Path("/tmp")),
         ):
             Qwen3TextEmbeddingGGUF(model_name="n24q02m/Qwen3-Embedding-0.6B-GGUF", threads=4)
 
@@ -399,7 +397,7 @@ class TestGGUFEmbeddingQueryEmbed:
     def model(self):
         """Create a GGUF model instance with mocked dependencies."""
         with patch(
-            "qwen3_embed.text.gguf_embedding.Qwen3TextEmbeddingGGUF.__init__", return_value=None
+            "fastretrieval.text.gguf_embedding.Qwen3TextEmbeddingGGUF.__init__", return_value=None
         ):
             model = Qwen3TextEmbeddingGGUF()
             # Mock the embed method since query_embed calls it

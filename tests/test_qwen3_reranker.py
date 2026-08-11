@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from qwen3_embed.common.onnx_model import OnnxOutputContext
-from qwen3_embed.rerank.cross_encoder.qwen3_cross_encoder import (
+from fastretrieval.common.onnx_model import OnnxOutputContext
+from fastretrieval.rerank.cross_encoder.qwen3_cross_encoder import (
     DEFAULT_INSTRUCTION,
     SYSTEM_PROMPT,
     TOKEN_NO_ID,
@@ -14,7 +14,7 @@ from qwen3_embed.rerank.cross_encoder.qwen3_cross_encoder import (
     Qwen3CrossEncoder,
     supported_qwen3_reranker_models,
 )
-from qwen3_embed.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
+from fastretrieval.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
 
 
 class TestQwen3CrossEncoderRegistry:
@@ -207,7 +207,7 @@ class TestTokenConstants:
 def mocked_qwen3_encoder():
     """Returns a Qwen3CrossEncoder with mocked model and tokenizer."""
     with patch(
-        "qwen3_embed.rerank.cross_encoder.qwen3_cross_encoder.Qwen3CrossEncoder.download_model",
+        "fastretrieval.rerank.cross_encoder.qwen3_cross_encoder.Qwen3CrossEncoder.download_model",
         return_value="/tmp/mock",
     ):
         encoder = Qwen3CrossEncoder("n24q02m/Qwen3-Reranker-0.6B-ONNX-YesNo", lazy_load=True)
@@ -241,7 +241,7 @@ class TestQwen3CrossEncoderInference:
 
     def test_onnx_embed_texts_missing_model(self):
         with patch(
-            "qwen3_embed.rerank.cross_encoder.qwen3_cross_encoder.Qwen3CrossEncoder.download_model",
+            "fastretrieval.rerank.cross_encoder.qwen3_cross_encoder.Qwen3CrossEncoder.download_model",
             return_value="/tmp/mock",
         ):
             encoder = Qwen3CrossEncoder("n24q02m/Qwen3-Reranker-0.6B-ONNX-YesNo", lazy_load=True)
@@ -251,7 +251,7 @@ class TestQwen3CrossEncoderInference:
 
     def test_onnx_embed_texts_missing_tokenizer(self):
         with patch(
-            "qwen3_embed.rerank.cross_encoder.qwen3_cross_encoder.Qwen3CrossEncoder.download_model",
+            "fastretrieval.rerank.cross_encoder.qwen3_cross_encoder.Qwen3CrossEncoder.download_model",
             return_value="/tmp/mock",
         ):
             encoder = Qwen3CrossEncoder("n24q02m/Qwen3-Reranker-0.6B-ONNX-YesNo", lazy_load=True)

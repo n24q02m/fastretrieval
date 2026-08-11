@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from qwen3_embed.rerank.cross_encoder.text_cross_encoder_base import TextCrossEncoderBase
+from fastretrieval.rerank.cross_encoder.text_cross_encoder_base import TextCrossEncoderBase
 
 
 class StubCrossEncoder(TextCrossEncoderBase):

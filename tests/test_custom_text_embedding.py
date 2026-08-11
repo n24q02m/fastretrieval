@@ -7,15 +7,15 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from qwen3_embed.common.model_description import (
+from fastretrieval.common.model_description import (
     CustomDenseModelDescription,
     DenseModelDescription,
     ModelSource,
     PoolingType,
 )
-from qwen3_embed.common.onnx_model import OnnxOutputContext
-from qwen3_embed.common.types import NumpyArray
-from qwen3_embed.text.custom_text_embedding import CustomTextEmbedding
+from fastretrieval.common.onnx_model import OnnxOutputContext
+from fastretrieval.common.types import NumpyArray
+from fastretrieval.text.custom_text_embedding import CustomTextEmbedding
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -218,7 +218,7 @@ class TestCustomTextEmbeddingInit:
         assert not called
 
     def test_custom_worker_returns_correct_type(self, tmp_path: Path) -> None:
-        from qwen3_embed.text.custom_text_embedding import CustomTextEmbeddingWorker
+        from fastretrieval.text.custom_text_embedding import CustomTextEmbeddingWorker
 
         _register(pooling=PoolingType.CLS)
         with (

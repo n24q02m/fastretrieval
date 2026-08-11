@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from qwen3_embed.common.custom_model import CustomModelSpec, CustomRerankerSpec
-from qwen3_embed.common.model_description import PoolingType
+from fastretrieval.common.custom_model import CustomModelSpec, CustomRerankerSpec
+from fastretrieval.common.model_description import PoolingType
 
 
 class TestCustomModelSpec:
@@ -26,7 +26,7 @@ class TestCustomModelSpec:
             normalization=False,
             additional_files=["file1.txt"],
         )
-        with patch("qwen3_embed.TextEmbedding.add_custom_model") as mock_add:
+        with patch("fastretrieval.TextEmbedding.add_custom_model") as mock_add:
             spec.register()
             mock_add.assert_called_once()
             args, kwargs = mock_add.call_args
@@ -47,7 +47,7 @@ class TestCustomModelSpec:
         spec = CustomModelSpec(
             model_id="test-model", url="https://example.com/model.onnx", dim=384
         )
-        with patch("qwen3_embed.TextEmbedding.add_custom_model") as mock_add:
+        with patch("fastretrieval.TextEmbedding.add_custom_model") as mock_add:
             spec.register()
             args, _ = mock_add.call_args
             assert args[0].sources.url == "https://example.com/model.onnx"
@@ -75,7 +75,7 @@ class TestCustomRerankerSpec:
             model_file="custom.onnx",
             additional_files=["extra.json"],
         )
-        with patch("qwen3_embed.TextCrossEncoder.add_custom_model") as mock_add:
+        with patch("fastretrieval.TextCrossEncoder.add_custom_model") as mock_add:
             spec.register()
             mock_add.assert_called_once()
             args, _ = mock_add.call_args
@@ -89,7 +89,7 @@ class TestCustomRerankerSpec:
         spec = CustomRerankerSpec(
             model_id="test-reranker", url="https://example.com/reranker.onnx"
         )
-        with patch("qwen3_embed.TextCrossEncoder.add_custom_model") as mock_add:
+        with patch("fastretrieval.TextCrossEncoder.add_custom_model") as mock_add:
             spec.register()
             args, _ = mock_add.call_args
             assert args[0].sources.url == "https://example.com/reranker.onnx"

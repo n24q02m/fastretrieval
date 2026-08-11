@@ -1,9 +1,9 @@
 from collections.abc import Iterable
 from typing import Any
 
-from qwen3_embed.common.model_description import DenseModelDescription
-from qwen3_embed.common.model_management import ModelManagement
-from qwen3_embed.common.types import NumpyArray
+from fastretrieval.common.model_description import DenseModelDescription
+from fastretrieval.common.model_management import ModelManagement
+from fastretrieval.common.types import NumpyArray
 
 
 class TextEmbeddingBase(ModelManagement[DenseModelDescription]):

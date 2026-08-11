@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from qwen3_embed.common.onnx_model import OnnxOutputContext
-from qwen3_embed.text.onnx_embedding import OnnxTextEmbedding
+from fastretrieval.common.onnx_model import OnnxOutputContext
+from fastretrieval.text.onnx_embedding import OnnxTextEmbedding
 
 
 class MockOnnxTextEmbedding(OnnxTextEmbedding):

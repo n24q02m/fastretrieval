@@ -24,7 +24,7 @@ from huggingface_hub.utils import (
 from loguru import logger
 from tqdm import tqdm
 
-from qwen3_embed.common.model_description import BaseModelDescription
+from fastretrieval.common.model_description import BaseModelDescription
 
 T = TypeVar("T", bound=BaseModelDescription)
 
@@ -65,7 +65,7 @@ class ModelManagement(Generic[T]):
         """Add a custom model to the existing embedding classes based on the passed model descriptions
 
         Model description dict should contain the fields same as in one of the model descriptions presented
-         in qwen3_embed.common.model_description
+         in fastretrieval.common.model_description
 
          E.g. for BaseModelDescription:
               model: str

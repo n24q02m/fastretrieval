@@ -7,7 +7,7 @@ BYO model can be loaded by id without hand-building a model description.
 
 from dataclasses import dataclass, field
 
-from qwen3_embed.common.model_description import (
+from fastretrieval.common.model_description import (
     BaseModelDescription,
     CustomDenseModelDescription,
     ModelSource,
@@ -25,7 +25,7 @@ class CustomModelSpec:
 
     Usage::
 
-        from qwen3_embed import CustomModelSpec, TextEmbedding
+        from fastretrieval import CustomModelSpec, TextEmbedding
 
         CustomModelSpec(
             model_id="Org/gte-multilingual-base-onnx",
@@ -49,7 +49,7 @@ class CustomModelSpec:
 
     def register(self) -> None:
         """Register this model with :class:`TextEmbedding` so it can be loaded by id."""
-        from qwen3_embed import TextEmbedding
+        from fastretrieval import TextEmbedding
 
         if self.dim is None:
             raise ValueError("dim is required for an embedding model")
@@ -81,7 +81,7 @@ class CustomRerankerSpec:
 
     Usage::
 
-        from qwen3_embed import CustomRerankerSpec, TextCrossEncoder
+        from fastretrieval import CustomRerankerSpec, TextCrossEncoder
 
         CustomRerankerSpec(
             model_id="onnx-community/gte-multilingual-reranker-base",
@@ -104,7 +104,7 @@ class CustomRerankerSpec:
 
     def register(self) -> None:
         """Register this reranker with :class:`TextCrossEncoder` so it loads by id."""
-        from qwen3_embed import TextCrossEncoder
+        from fastretrieval import TextCrossEncoder
 
         model_description = BaseModelDescription(
             model=self.model_id,

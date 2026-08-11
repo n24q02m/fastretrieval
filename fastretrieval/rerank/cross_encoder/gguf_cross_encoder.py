@@ -3,7 +3,7 @@
 Runtime alternative to ONNX for Qwen3-Reranker. Uses llama-cpp-python for
 inference from GGUF quantized models (Q4_K_M).
 
-Requires optional dependency: pip install qwen3-embed[gguf]
+Requires optional dependency: pip install fastretrieval[gguf]
 """
 
 from __future__ import annotations
@@ -14,10 +14,10 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from qwen3_embed.common.model_description import BaseModelDescription, ModelSource
-from qwen3_embed.common.types import Device
-from qwen3_embed.common.utils import define_cache_dir
-from qwen3_embed.rerank.cross_encoder.text_cross_encoder_base import TextCrossEncoderBase
+from fastretrieval.common.model_description import BaseModelDescription, ModelSource
+from fastretrieval.common.types import Device
+from fastretrieval.common.utils import define_cache_dir
+from fastretrieval.rerank.cross_encoder.text_cross_encoder_base import TextCrossEncoderBase
 
 # ---------------------------------------------------------------------------
 # Qwen3 reranker constants (same as ONNX version)
@@ -71,7 +71,7 @@ def _check_llama_cpp() -> None:
     except ImportError as e:
         msg = (
             "llama-cpp-python is required for GGUF models. "
-            "Install with: pip install qwen3-embed[gguf]"
+            "Install with: pip install fastretrieval[gguf]"
         )
         raise ImportError(msg) from e
 
@@ -88,7 +88,7 @@ class Qwen3CrossEncoderGGUF(TextCrossEncoderBase):
 
     Usage::
 
-        from qwen3_embed import TextCrossEncoder
+        from fastretrieval import TextCrossEncoder
 
         reranker = TextCrossEncoder("n24q02m/Qwen3-Reranker-0.6B-GGUF")
         scores = list(reranker.rerank("What is AI?", ["doc1", "doc2"]))

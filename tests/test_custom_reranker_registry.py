@@ -9,8 +9,8 @@ with input >= batch_size raised "Model ... not supported" in the spawned worker
 
 import pytest
 
-from qwen3_embed.common.model_description import BaseModelDescription, ModelSource
-from qwen3_embed.rerank.cross_encoder.custom_text_cross_encoder import (
+from fastretrieval.common.model_description import BaseModelDescription, ModelSource
+from fastretrieval.rerank.cross_encoder.custom_text_cross_encoder import (
     CustomTextCrossEncoder,
     CustomTextCrossEncoderWorker,
 )
@@ -50,7 +50,7 @@ def test_custom_reranker_import_registry_is_idempotent():
 
 
 def test_custom_reranker_registration_invalidates_facade_cache():
-    from qwen3_embed.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
+    from fastretrieval.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
 
     _clear()
     TextCrossEncoder._clear_model_cache()
@@ -114,7 +114,7 @@ def test_custom_reranker_parallel_resolves_in_workers():
         )
     )
     try:
-        from qwen3_embed.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
+        from fastretrieval.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
 
         ce = TextCrossEncoder(model_name=model_id)
         pairs = [("q", "d1"), ("q", "d2"), ("q", "d3")]

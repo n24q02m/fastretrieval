@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from qwen3_embed.text.text_embedding import TextEmbedding
+from fastretrieval.text.text_embedding import TextEmbedding
 
 
 def test_init_unsupported_model_raises_value_error():

@@ -1,6 +1,16 @@
-# AGENTS.md - qwen3-embed
+# AGENTS.md - fastretrieval
 
-Lightweight Qwen3 text embedding & reranking library via ONNX Runtime. Python >= 3.11 (tested 3.11-3.14), uv.
+Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract. Python >= 3.11 (tested 3.11-3.14), uv.
+
+## Package Identity
+
+- Distribution: `fastretrieval`; import package: `fastretrieval`.
+- Install the runtime with `pip install fastretrieval`; add `[gguf]` for GGUF support.
+- New environment variables: `FASTRETRIEVAL_CACHE_PATH` and `FASTRETRIEVAL_MAX_INPUT_LENGTH`.
+- Deprecated compatibility aliases: `QWEN3_EMBED_CACHE_PATH` and `QWEN3_EMBED_MAX_INPUT_LENGTH`.
+  The new names win when both are set; old names remain readable and emit `DeprecationWarning`.
+- Qwen3 adapter/module/test names remain model-specific identifiers and must not be renamed as
+  part of package identity work.
 
 ## Build / Lint / Test Commands
 
@@ -63,7 +73,7 @@ Custom rules in `[tool.ty.rules]` (pyproject.toml):
 
 1. Standard library (`import json`, `from pathlib import Path`, `from typing import Any`)
 2. Third-party (`import numpy as np`, `from loguru import logger`, `from tokenizers import Tokenizer`)
-3. Local (`from qwen3_embed.common.types import ...`)
+3. Local (`from fastretrieval.common.types import ...`)
 
 ```python
 import json
@@ -73,7 +83,7 @@ from pathlib import Path
 import numpy as np
 from loguru import logger
 
-from qwen3_embed.common.types import PathInput, Device
+from fastretrieval.common.types import PathInput, Device
 ```
 
 ### Type Hints
@@ -108,7 +118,7 @@ from qwen3_embed.common.types import PathInput, Device
 ### File Organization
 
 ```
-qwen3_embed/                      # Main package (not src layout)
+fastretrieval/                    # Main package (not src layout)
   __init__.py                     # Public API: TextEmbedding, TextCrossEncoder
   py.typed                        # PEP 561 marker
   parallel_processor.py           # Multiprocessing worker pool

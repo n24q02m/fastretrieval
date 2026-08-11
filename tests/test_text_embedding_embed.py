@@ -2,13 +2,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from qwen3_embed.text.text_embedding import TextEmbedding
+from fastretrieval.text.text_embedding import TextEmbedding
 
 
 class TestTextEmbeddingEmbed:
     @pytest.fixture
     def mock_embedding(self):
-        with patch("qwen3_embed.text.text_embedding.TextEmbedding.__init__", return_value=None):
+        with patch("fastretrieval.text.text_embedding.TextEmbedding.__init__", return_value=None):
             embedding = TextEmbedding("dummy-model")
             embedding.model = MagicMock()
             return embedding
@@ -18,7 +18,7 @@ class TestTextEmbeddingEmbed:
         mock_embedding.model.embed.return_value = iter([1, 2, 3])
         doc = "test document"
 
-        with patch("qwen3_embed.common.utils.check_input_length") as mock_check:
+        with patch("fastretrieval.common.utils.check_input_length") as mock_check:
             results = list(mock_embedding.embed(doc, batch_size=128, parallel=1, extra="param"))
 
             mock_check.assert_called_once_with(doc)
@@ -32,7 +32,7 @@ class TestTextEmbeddingEmbed:
         mock_iter = iter(docs)
 
         with patch(
-            "qwen3_embed.common.utils.iter_checked_texts", return_value=mock_iter
+            "fastretrieval.common.utils.iter_checked_texts", return_value=mock_iter
         ) as mock_iter_checked:
             results = list(mock_embedding.embed(docs, batch_size=64))
 
@@ -46,7 +46,7 @@ class TestTextEmbeddingEmbed:
         mock_embedding.model.embed.return_value = iter([])
         doc = "test"
 
-        with patch("qwen3_embed.common.utils.check_input_length"):
+        with patch("fastretrieval.common.utils.check_input_length"):
             list(mock_embedding.embed(doc))
 
             mock_embedding.model.embed.assert_called_once_with(doc, 256, None)

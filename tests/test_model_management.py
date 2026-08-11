@@ -15,8 +15,8 @@ import requests
 from huggingface_hub.errors import RepositoryNotFoundError
 from huggingface_hub.hf_api import RepoFile
 
-from qwen3_embed.common.model_description import BaseModelDescription, ModelSource
-from qwen3_embed.common.model_management import ModelManagement
+from fastretrieval.common.model_description import BaseModelDescription, ModelSource
+from fastretrieval.common.model_management import ModelManagement
 
 # ---------------------------------------------------------------------------
 # Helpers / Fixtures
@@ -151,7 +151,7 @@ class TestDownloadFileFromGcs:
                 "https://storage.googleapis.com@127.0.0.1/test", str(tmp_path / "out")
             )
 
-    @patch("qwen3_embed.common.model_management.ModelManagement._get_session")
+    @patch("fastretrieval.common.model_management.ModelManagement._get_session")
     def test_download_file_from_gcs_uses_large_chunk_size(self, mock_get_session, tmp_path):
         """Verify that iter_content is called with the optimized chunk_size."""
         mock_session = MagicMock()
@@ -173,7 +173,7 @@ class TestDownloadFileFromGcs:
         # Check if iter_content was called with chunk_size=1MB (1048576)
         response.iter_content.assert_called_with(chunk_size=1024 * 1024)
 
-    @patch("qwen3_embed.common.model_management.ModelManagement._get_session")
+    @patch("fastretrieval.common.model_management.ModelManagement._get_session")
     def test_requests_get_uses_verify_true(self, mock_get_session, tmp_path):
         """requests.get MUST be called with verify=True to prevent accidental bypass."""
 
@@ -193,7 +193,7 @@ class TestDownloadFileFromGcs:
         args, kwargs = mock_get.call_args
         assert kwargs.get("verify") is True
 
-    @patch("qwen3_embed.common.model_management.ModelManagement._get_session")
+    @patch("fastretrieval.common.model_management.ModelManagement._get_session")
     def test_download_file_from_gcs_404_raises_error(self, mock_get_session, tmp_path):
         """Non-403 HTTP errors should be caught by raise_for_status."""
 
@@ -228,7 +228,7 @@ class TestDownloadFileFromGcs:
             with pytest.raises(ValueError, match="Invalid URL"):
                 ModelManagement.download_file_from_gcs(payload, str(output))
 
-    @patch("qwen3_embed.common.model_management.ModelManagement._get_session")
+    @patch("fastretrieval.common.model_management.ModelManagement._get_session")
     def test_ssrf_redirects_rejected(self, mock_get_session, tmp_path):
         """SSRF payloads attempting to bypass via open redirects must be rejected."""
         mock_session = MagicMock()
@@ -264,7 +264,7 @@ class TestDownloadFileFromGcs:
         )
         assert result == str(existing)
 
-    @patch("qwen3_embed.common.model_management.ModelManagement._get_session")
+    @patch("fastretrieval.common.model_management.ModelManagement._get_session")
     def test_403_raises_permission_error(self, mock_get_session, tmp_path):
         mock_session = MagicMock()
         mock_get = mock_session.get
@@ -277,7 +277,7 @@ class TestDownloadFileFromGcs:
         with pytest.raises(PermissionError, match="Authentication Error"):
             ModelManagement.download_file_from_gcs(f"{self.GCS_URL}/x.onnx", str(output))
 
-    @patch("qwen3_embed.common.model_management.ModelManagement._get_session")
+    @patch("fastretrieval.common.model_management.ModelManagement._get_session")
     def test_missing_content_length_logs_warning(self, mock_get_session, tmp_path):
         mock_session = MagicMock()
         mock_get = mock_session.get
@@ -289,7 +289,7 @@ class TestDownloadFileFromGcs:
         mock_get.return_value = response
 
         output = tmp_path / "out.onnx"
-        with patch("qwen3_embed.common.model_management.logger.warning") as mock_warning:
+        with patch("fastretrieval.common.model_management.logger.warning") as mock_warning:
             result = ModelManagement.download_file_from_gcs(
                 f"{self.GCS_URL}/out.onnx", str(output), show_progress=False
             )
@@ -297,7 +297,7 @@ class TestDownloadFileFromGcs:
             mock_warning.assert_called_once()
             assert "Content-length header is missing" in mock_warning.call_args[0][0]
 
-    @patch("qwen3_embed.common.model_management.ModelManagement._get_session")
+    @patch("fastretrieval.common.model_management.ModelManagement._get_session")
     def test_downloads_file_with_content_length(self, mock_get_session, tmp_path):
         mock_session = MagicMock()
         mock_get = mock_session.get
@@ -316,7 +316,7 @@ class TestDownloadFileFromGcs:
         assert result == str(output)
         assert output.read_bytes() == chunk
 
-    @patch("qwen3_embed.common.model_management.ModelManagement._get_session")
+    @patch("fastretrieval.common.model_management.ModelManagement._get_session")
     def test_skips_keepalive_empty_chunks(self, mock_get_session, tmp_path):
         """Empty chunks must be filtered out (keep-alive frames)."""
 
@@ -333,7 +333,7 @@ class TestDownloadFileFromGcs:
         ModelManagement.download_file_from_gcs(f"{self.GCS_URL}/out.onnx", str(output))
         assert output.read_bytes() == b"hello"
 
-    @patch("qwen3_embed.common.model_management.ModelManagement._get_session")
+    @patch("fastretrieval.common.model_management.ModelManagement._get_session")
     def test_show_progress_false_when_no_content_length(self, mock_get_session, tmp_path):
         """Progress bar disabled when content-length is missing."""
 
@@ -353,7 +353,7 @@ class TestDownloadFileFromGcs:
         )
         assert output.exists()
 
-    @patch("qwen3_embed.common.model_management.ModelManagement._get_session")
+    @patch("fastretrieval.common.model_management.ModelManagement._get_session")
     def test_hash_mismatch_raises_value_error(self, mock_get_session, tmp_path):
         """MD5 mismatch between header and downloaded content raises ValueError."""
 
@@ -379,7 +379,7 @@ class TestDownloadFileFromGcs:
             ModelManagement.download_file_from_gcs(f"{self.GCS_URL}/model.onnx", str(output))
         assert not output.exists()
 
-    @patch("qwen3_embed.common.model_management.ModelManagement._get_session")
+    @patch("fastretrieval.common.model_management.ModelManagement._get_session")
     def test_hash_match_succeeds(self, mock_get_session, tmp_path):
         """Matching MD5 in x-goog-hash header allows download to complete."""
 
@@ -675,7 +675,7 @@ class TestDecompressToCache:
         mock_member.isdir.return_value = False
         mock_member.isreg.return_value = True
 
-        with patch("qwen3_embed.common.model_management.tarfile") as mock_tarfile_mod:
+        with patch("fastretrieval.common.model_management.tarfile") as mock_tarfile_mod:
             # Mock tarfile.TarError since it is used in "except" and "raise"
             mock_tarfile_mod.TarError = tarfile.TarError
             # Mock tarfile.open to return a mock_tar
@@ -707,8 +707,8 @@ class TestDownloadFilesFromHuggingFace:
             make_repo_file("sub/config.json", size=100, oid="bbb"),
         ]
 
-    @patch("qwen3_embed.common.model_management.disable_progress_bars")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.disable_progress_bars")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_local_files_only_no_metadata(self, mock_snap, mock_disable, tmp_path):
         """local_files_only=True with no metadata file just calls snapshot_download."""
         mock_snap.return_value = str(tmp_path / "result")
@@ -723,8 +723,8 @@ class TestDownloadFilesFromHuggingFace:
         mock_snap.assert_called_once()
         assert result == str(tmp_path / "result")
 
-    @patch("qwen3_embed.common.model_management.disable_progress_bars")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.disable_progress_bars")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_local_files_only_with_valid_metadata(self, mock_snap, mock_disable, tmp_path):
         """local_files_only=True with valid metadata: snapshot_download is called."""
         snapshot_dir = tmp_path / "models--org--repo"
@@ -747,8 +747,8 @@ class TestDownloadFilesFromHuggingFace:
         mock_snap.assert_called_once()
         assert result == str(snapshot_dir)
 
-    @patch("qwen3_embed.common.model_management.disable_progress_bars")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.disable_progress_bars")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_local_files_only_with_invalid_metadata_warns(self, mock_snap, mock_disable, tmp_path):
         """local_files_only=True with mismatched file sizes logs a warning but continues."""
         snapshot_dir = tmp_path / "models--org--repo"
@@ -770,8 +770,8 @@ class TestDownloadFilesFromHuggingFace:
         mock_snap.assert_called_once()
         assert result == str(snapshot_dir)
 
-    @patch("qwen3_embed.common.model_management.disable_progress_bars")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.disable_progress_bars")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_local_files_only_passes_cached_revision(self, mock_snap, mock_disable, tmp_path):
         """local_files_only resolves the cached SHA and pins ``revision``.
 
@@ -792,8 +792,8 @@ class TestDownloadFilesFromHuggingFace:
         )
         assert mock_snap.call_args.kwargs["revision"] == "deadbeefsha"
 
-    @patch("qwen3_embed.common.model_management.disable_progress_bars")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.disable_progress_bars")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_local_files_only_explicit_revision_not_overwritten(
         self, mock_snap, mock_disable, tmp_path
     ):
@@ -827,9 +827,9 @@ class TestDownloadFilesFromHuggingFace:
         (empty / "snapshots").mkdir(parents=True)
         assert ModelManagement._resolve_cached_revision(empty) is None
 
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_online_no_cached_metadata(self, mock_snap, mock_info, mock_tree, tmp_path):
         """Online mode: no prior metadata -> downloads, collects metadata, verifies."""
         snapshot_dir = tmp_path / "models--org--repo"
@@ -850,9 +850,9 @@ class TestDownloadFilesFromHuggingFace:
         meta_file = snapshot_dir / ModelManagement.METADATA_FILE
         assert meta_file.exists()
 
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_online_cached_metadata_verified(self, mock_snap, mock_info, mock_tree, tmp_path):
         """Online mode with valid cached metadata: disables progress bars."""
         snapshot_dir = tmp_path / "models--org--repo"
@@ -868,7 +868,7 @@ class TestDownloadFilesFromHuggingFace:
         mock_tree.return_value = repo_files
         mock_snap.return_value = str(snapshot_dir)
 
-        with patch("qwen3_embed.common.model_management.disable_progress_bars") as mock_dis:
+        with patch("fastretrieval.common.model_management.disable_progress_bars") as mock_dis:
             result = ModelManagement.download_files_from_huggingface(
                 hf_source_repo="org/repo",
                 cache_dir=str(tmp_path),
@@ -877,9 +877,9 @@ class TestDownloadFilesFromHuggingFace:
         mock_dis.assert_called_once()
         assert result == str(snapshot_dir)
 
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_online_empty_repo_tree(self, mock_snap, mock_info, mock_tree, tmp_path):
         """Online mode with empty repo tree: treats repo_files as empty list."""
         snapshot_dir = tmp_path / "models--org--repo"
@@ -896,9 +896,9 @@ class TestDownloadFilesFromHuggingFace:
         )
         assert result == str(snapshot_dir)
 
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_online_download_failure_raises_value_error(
         self, mock_snap, mock_info, mock_tree, tmp_path
     ):
@@ -920,9 +920,9 @@ class TestDownloadFilesFromHuggingFace:
                 extra_patterns=["model.onnx"],
             )
 
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_metadata_save_mkdir_oserror_swallowed(
         self, mock_snap, mock_info, mock_tree, tmp_path
     ):
@@ -952,9 +952,9 @@ class TestDownloadFilesFromHuggingFace:
             )
         assert result == str(snapshot_dir)
 
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_metadata_save_mkdir_valueerror_swallowed(
         self, mock_snap, mock_info, mock_tree, tmp_path
     ):
@@ -984,9 +984,9 @@ class TestDownloadFilesFromHuggingFace:
             )
         assert result == str(snapshot_dir)
 
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_metadata_save_oserror_is_swallowed(self, mock_snap, mock_info, mock_tree, tmp_path):
         """OSError while saving metadata is logged but does not raise."""
         snapshot_dir = tmp_path / "models--org--repo"
@@ -1016,9 +1016,9 @@ class TestDownloadFilesFromHuggingFace:
             )
         assert result == str(snapshot_dir)
 
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_verify_files_keyerror_returns_false(self, mock_snap, mock_info, mock_tree, tmp_path):
         """KeyError in metadata causes _verify_files_from_metadata to return False."""
         snapshot_dir = tmp_path / "models--org--repo"
@@ -1046,9 +1046,9 @@ class TestDownloadFilesFromHuggingFace:
 
     # -----------------------------------------------------------------------
 
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_metadata_save_valueerror_is_swallowed(
         self, mock_snap, mock_info, mock_tree, tmp_path
     ):
@@ -1068,9 +1068,9 @@ class TestDownloadFilesFromHuggingFace:
             raise ValueError("metadata serialization error")
 
         with (
-            patch("qwen3_embed.common.model_management.json.dumps", patched_dumps),
-            patch("qwen3_embed.common.model_management.logger.exception") as mock_exception,
-            patch("qwen3_embed.common.model_management.logger.warning") as mock_warning,
+            patch("fastretrieval.common.model_management.json.dumps", patched_dumps),
+            patch("fastretrieval.common.model_management.logger.exception") as mock_exception,
+            patch("fastretrieval.common.model_management.logger.warning") as mock_warning,
         ):
             # Should not raise
             result = ModelManagement.download_files_from_huggingface(
@@ -1093,9 +1093,9 @@ class TestDownloadFilesFromHuggingFace:
     # TestRetrieveModelGcs
     # ---------------------------------------------------------------------------
 
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.snapshot_download")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.snapshot_download")
     def test_collect_file_metadata_logic(self, mock_snap, mock_info, mock_tree, tmp_path):
         """Tests the internal _collect_file_metadata logic by verifying the saved metadata.json."""
         snapshot_dir = tmp_path / "models--org--repo"
@@ -1159,7 +1159,7 @@ class TestDownloadFilesFromHuggingFace:
 class TestDownloadFromHF:
     """Tests for _download_from_hf method."""
 
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     @patch.object(ModelManagement, "download_files_from_huggingface")
     def test_download_success(self, mock_hf, mock_enable, tmp_path):
         """Verify successful download returns Path and enables progress bars."""
@@ -1173,8 +1173,8 @@ class TestDownloadFromHF:
         mock_enable.assert_called_once()
 
     @pytest.mark.parametrize("exception_cls", [OSError, RepositoryNotFoundError, ValueError])
-    @patch("qwen3_embed.common.model_management.logger.error")
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.logger.error")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     @patch.object(ModelManagement, "download_files_from_huggingface")
     def test_download_exceptions_logging(
         self, mock_hf, mock_enable, mock_logger, exception_cls, tmp_path
@@ -1197,8 +1197,8 @@ class TestDownloadFromHF:
         assert "Could not download model from HuggingFace" in mock_logger.call_args[0][0]
         mock_enable.assert_called_once()
 
-    @patch("qwen3_embed.common.model_management.logger.error")
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.logger.error")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     @patch.object(ModelManagement, "download_files_from_huggingface")
     def test_download_exception_no_logging_local_files_only(
         self, mock_hf, mock_enable, mock_logger, tmp_path
@@ -1351,7 +1351,7 @@ class TestRetrieveModelGcs:
 class TestDownloadFromGcs:
     """Tests for _download_from_gcs method."""
 
-    @patch("qwen3_embed.common.model_management.logger.error")
+    @patch("fastretrieval.common.model_management.logger.error")
     def test_download_from_gcs_returns_none_on_exception(self, mock_logger, tmp_path):
         """If retrieve_model_gcs raises an exception, return None and log error."""
         with patch.object(
@@ -1369,7 +1369,7 @@ class TestDownloadFromGcs:
             "Could not download model from url: http://example.com/model.tar.gz"
         )
 
-    @patch("qwen3_embed.common.model_management.logger.error")
+    @patch("fastretrieval.common.model_management.logger.error")
     def test_download_from_gcs_no_logger_on_local_files_only(self, mock_logger, tmp_path):
         """If local_files_only is True, do not log error on exception."""
         with patch.object(
@@ -1402,7 +1402,7 @@ class TestDownloadModel:
         )
         assert result == Path("/custom/path")
 
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     def test_hf_source_cache_hit_returns_path(self, mock_enable, tmp_path):
         """HF local cache hit returns immediately without retry loop."""
         model = make_model_description(hf="org/repo")
@@ -1421,7 +1421,7 @@ class TestDownloadModel:
         assert result == Path(cached_dir)
         mock_enable.assert_called()
 
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     def test_hf_source_cache_miss_falls_through_to_retry(self, mock_enable, tmp_path):
         """HF local cache miss leads to online retry, then success."""
         model = make_model_description(hf="org/repo")
@@ -1444,7 +1444,7 @@ class TestDownloadModel:
         assert result == Path(online_path)
         assert call_count == 2
 
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     def test_hf_online_fails_falls_back_to_url(self, mock_enable, tmp_path):
         """HF online failure falls back to GCS/URL source."""
         model = make_model_description(hf="org/repo", url="http://example.com/model.tar.gz")
@@ -1464,7 +1464,7 @@ class TestDownloadModel:
         mock_gcs.assert_called_once()
         assert result == gcs_path
 
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     def test_url_only_source_uses_gcs(self, mock_enable, tmp_path):
         """Model with only url source uses retrieve_model_gcs directly."""
         model = make_model_description(hf=None, url="http://example.com/model.tar.gz")
@@ -1478,8 +1478,8 @@ class TestDownloadModel:
         mock_gcs.assert_called_once()
         assert result == gcs_path
 
-    @patch("qwen3_embed.common.model_management.time.sleep")
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.time.sleep")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     def test_all_sources_fail_raises_value_error(self, mock_enable, mock_sleep, tmp_path):
         """All retry attempts exhausted -> ValueError."""
         model = make_model_description(hf="org/repo", url="http://example.com/model.tar.gz")
@@ -1495,8 +1495,8 @@ class TestDownloadModel:
         ):
             ModelManagement.download_model(model, cache_dir=str(tmp_path), retries=2)
 
-    @patch("qwen3_embed.common.model_management.time.sleep")
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.time.sleep")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     def test_sleep_called_between_retries(self, mock_enable, mock_sleep, tmp_path):
         """time.sleep is called between failed retry attempts."""
         model = make_model_description(hf="org/repo", url="http://example.com/model.tar.gz")
@@ -1514,7 +1514,7 @@ class TestDownloadModel:
 
         assert mock_sleep.call_count >= 1
 
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     def test_local_files_only_breaks_on_failure(self, mock_enable, tmp_path):
         """local_files_only=True does not retry and raises ValueError."""
         model = make_model_description(hf="org/repo", url="http://example.com/model.tar.gz")
@@ -1534,7 +1534,7 @@ class TestDownloadModel:
         ):
             ModelManagement.download_model(model, cache_dir=str(tmp_path), local_files_only=True)
 
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     def test_repository_not_found_error_handled(self, mock_enable, tmp_path):
         """RepositoryNotFoundError in HF online -> falls back to GCS."""
         model = make_model_description(hf="org/repo", url="http://example.com/model.tar.gz")
@@ -1556,7 +1556,7 @@ class TestDownloadModel:
         mock_gcs.assert_called_once()
         assert result == gcs_path
 
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     def test_extra_patterns_built_from_model_file_and_additional_files(
         self, mock_enable, tmp_path
     ):
@@ -1588,7 +1588,7 @@ class TestDownloadModel:
 class TestCheckHFCache:
     """Tests for _check_hf_cache method."""
 
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     @patch.object(ModelManagement, "download_files_from_huggingface")
     def test_returns_path_if_model_exists(self, mock_download, mock_enable, tmp_path):
         """If the model file exists in the downloaded snapshot, return the path."""
@@ -1615,7 +1615,7 @@ class TestCheckHFCache:
         # Verify local_files_only was passed as True
         assert mock_download.call_args[1].get("local_files_only") is True
 
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     @patch.object(ModelManagement, "download_files_from_huggingface")
     def test_returns_none_if_model_missing(self, mock_download, mock_enable, tmp_path):
         """If the snapshot directory is downloaded but missing the required file, return None."""
@@ -1637,8 +1637,8 @@ class TestCheckHFCache:
         assert result is None
         mock_enable.assert_called_once()
 
-    @patch("qwen3_embed.common.model_management.logger.debug")
-    @patch("qwen3_embed.common.model_management.enable_progress_bars")
+    @patch("fastretrieval.common.model_management.logger.debug")
+    @patch("fastretrieval.common.model_management.enable_progress_bars")
     @patch.object(ModelManagement, "download_files_from_huggingface")
     def test_returns_none_on_exception(self, mock_download, mock_enable, mock_logger, tmp_path):
         """If an OSError is raised during the cache check (e.g. not found), it is caught and None is returned."""
@@ -1666,7 +1666,7 @@ class TestCheckHFCache:
 class TestSaveFileMetadata:
     """Tests for _save_file_metadata method."""
 
-    @patch("qwen3_embed.common.model_management.logger")
+    @patch("fastretrieval.common.model_management.logger")
     def test_save_file_metadata_handles_oserror(self, mock_logger, tmp_path):
         """Verify that OSError during file write is caught and logged."""
         model_dir = tmp_path / "model"
@@ -1682,7 +1682,7 @@ class TestSaveFileMetadata:
             "Failed to save metadata file. Next load may take longer to verify."
         )
 
-    @patch("qwen3_embed.common.model_management.logger")
+    @patch("fastretrieval.common.model_management.logger")
     def test_save_file_metadata_handles_valueerror(self, mock_logger, tmp_path):
         """Verify that ValueError during json.dumps is caught and logged."""
         model_dir = tmp_path / "model"
@@ -1691,7 +1691,7 @@ class TestSaveFileMetadata:
 
         # Mock json.dumps to raise ValueError
         with patch(
-            "qwen3_embed.common.model_management.json.dumps",
+            "fastretrieval.common.model_management.json.dumps",
             side_effect=ValueError("Invalid JSON"),
         ):
             ModelManagement._save_file_metadata(model_dir, meta)
@@ -1701,7 +1701,7 @@ class TestSaveFileMetadata:
             "Failed to save metadata file. Next load may take longer to verify."
         )
 
-    @patch("qwen3_embed.common.model_management.logger")
+    @patch("fastretrieval.common.model_management.logger")
     def test_save_file_metadata_handles_mkdir_oserror(self, mock_logger, tmp_path):
         """Verify that OSError during directory creation is caught and logged."""
         model_dir = tmp_path / "model_no_exist"
@@ -1755,7 +1755,7 @@ class TestVerifyLocalMetadata:
         assert result is True
         mock_verify.assert_called_once_with(snapshot_dir, metadata, [])
 
-    @patch("qwen3_embed.common.model_management.logger")
+    @patch("fastretrieval.common.model_management.logger")
     def test_verify_local_metadata_json_decode_error(self, mock_logger, tmp_path):
         """Verify handling of invalid JSON in metadata file."""
         snapshot_dir = tmp_path / "snapshot"
@@ -1769,7 +1769,7 @@ class TestVerifyLocalMetadata:
         mock_logger.warning.assert_called_once()
         assert "Failed to read or parse metadata file" in mock_logger.warning.call_args[0][0]
 
-    @patch("qwen3_embed.common.model_management.logger")
+    @patch("fastretrieval.common.model_management.logger")
     def test_verify_local_metadata_os_error(self, mock_logger, tmp_path):
         """Verify handling of OSError during metadata reading."""
         snapshot_dir = tmp_path / "snapshot"
@@ -1853,8 +1853,8 @@ class TestGetExpectedHashes:
 class TestFetchRepoFiles:
     """Tests for _fetch_repo_files method."""
 
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
     def test_fetch_repo_files_success(self, mock_list_tree, mock_model_info):
         """Verify SHA retrieval and file filtering by extension."""
         mock_model_info.return_value = MagicMock(sha="rev123")
@@ -1881,7 +1881,7 @@ class TestFetchRepoFiles:
         assert "README.md" not in file_paths
         assert "script.py" not in file_paths
 
-    @patch("qwen3_embed.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.model_info")
     def test_fetch_repo_files_no_sha_raises_error(self, mock_model_info):
         """Verify ValueError is raised if SHA is None."""
         mock_model_info.return_value = MagicMock(sha=None)
@@ -1889,8 +1889,8 @@ class TestFetchRepoFiles:
         with pytest.raises(ValueError, match="Could not determine revision sha"):
             ModelManagement._fetch_repo_files("org/repo")
 
-    @patch("qwen3_embed.common.model_management.model_info")
-    @patch("qwen3_embed.common.model_management.list_repo_tree")
+    @patch("fastretrieval.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.list_repo_tree")
     def test_fetch_repo_files_empty_tree(self, mock_list_tree, mock_model_info):
         """Verify empty list is returned if repo tree is empty."""
         mock_model_info.return_value = MagicMock(sha="rev123")

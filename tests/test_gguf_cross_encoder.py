@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from qwen3_embed.rerank.cross_encoder.gguf_cross_encoder import (
+from fastretrieval.rerank.cross_encoder.gguf_cross_encoder import (
     DEFAULT_INSTRUCTION,
     RERANK_TEMPLATE,
     SYSTEM_PROMPT,
@@ -42,9 +42,7 @@ def test_check_llama_cpp_missing():
 
 def test_check_llama_cpp_exact_message():
     """Test that _check_llama_cpp raises ImportError with the exact expected message."""
-    expected_msg = (
-        "llama-cpp-python is required for GGUF models. Install with: pip install qwen3-embed[gguf]"
-    )
+    expected_msg = "llama-cpp-python is required for GGUF models. Install with: pip install fastretrieval[gguf]"
     with (
         mock.patch.dict(sys.modules, {"llama_cpp": None}),
         pytest.raises(ImportError) as excinfo,
@@ -96,7 +94,7 @@ def _make_mock_llm(vocab_size: int = 10000) -> MagicMock:
 def _make_model(**extra_attrs: Any) -> Qwen3CrossEncoderGGUF:
     """Create a Qwen3CrossEncoderGGUF instance with __init__ bypassed."""
     with patch(
-        "qwen3_embed.rerank.cross_encoder.gguf_cross_encoder.Qwen3CrossEncoderGGUF.__init__",
+        "fastretrieval.rerank.cross_encoder.gguf_cross_encoder.Qwen3CrossEncoderGGUF.__init__",
         return_value=None,
     ):
         model = Qwen3CrossEncoderGGUF()
@@ -114,7 +112,7 @@ def _make_model(**extra_attrs: Any) -> Qwen3CrossEncoderGGUF:
 class TestGGUFCrossEncoderInit:
     def test_init_creates_llm_cpu(self, tmp_path: Path):
         """Test __init__ creates Llama with n_gpu_layers=0 for CPU device."""
-        from qwen3_embed.common.types import Device
+        from fastretrieval.common.types import Device
 
         model_file = tmp_path / "qwen3-reranker-0.6b-q4-k-m.gguf"
         model_file.touch()
@@ -127,7 +125,7 @@ class TestGGUFCrossEncoderInit:
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3CrossEncoderGGUF, "download_model", return_value=str(tmp_path)),
             patch(
-                "qwen3_embed.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
+                "fastretrieval.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
                 return_value=Path("/tmp"),
             ),
         ):
@@ -145,7 +143,7 @@ class TestGGUFCrossEncoderInit:
 
     def test_init_creates_llm_gpu_auto(self, tmp_path: Path):
         """Test __init__ creates Llama with n_gpu_layers=-1 for Device.AUTO."""
-        from qwen3_embed.common.types import Device
+        from fastretrieval.common.types import Device
 
         model_file = tmp_path / "qwen3-reranker-0.6b-q4-k-m.gguf"
         model_file.touch()
@@ -158,7 +156,7 @@ class TestGGUFCrossEncoderInit:
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3CrossEncoderGGUF, "download_model", return_value=str(tmp_path)),
             patch(
-                "qwen3_embed.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
+                "fastretrieval.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
                 return_value=Path("/tmp"),
             ),
         ):
@@ -183,7 +181,7 @@ class TestGGUFCrossEncoderInit:
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3CrossEncoderGGUF, "download_model", return_value=str(tmp_path)),
             patch(
-                "qwen3_embed.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
+                "fastretrieval.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
                 return_value=Path("/tmp"),
             ),
         ):
@@ -203,7 +201,7 @@ class TestGGUFCrossEncoderInit:
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3CrossEncoderGGUF, "download_model", return_value=str(tmp_path)),
             patch(
-                "qwen3_embed.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
+                "fastretrieval.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
                 return_value=Path("/tmp"),
             ),
             pytest.raises(FileNotFoundError, match="GGUF model file not found"),
@@ -223,7 +221,7 @@ class TestGGUFCrossEncoderInit:
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3CrossEncoderGGUF, "download_model", return_value=str(tmp_path)),
             patch(
-                "qwen3_embed.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
+                "fastretrieval.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
                 return_value=Path("/tmp"),
             ),
         ):
@@ -248,7 +246,7 @@ class TestGGUFCrossEncoderInit:
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3CrossEncoderGGUF, "download_model", return_value=str(tmp_path)),
             patch(
-                "qwen3_embed.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
+                "fastretrieval.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
                 return_value=Path("/tmp"),
             ),
         ):
@@ -522,7 +520,7 @@ class TestRerankPairs:
 class TestGGUFCrossEncoderExtra:
     def test_list_supported_models(self):
         """Test _list_supported_models returns the supported models list."""
-        from qwen3_embed.rerank.cross_encoder.gguf_cross_encoder import (
+        from fastretrieval.rerank.cross_encoder.gguf_cross_encoder import (
             supported_qwen3_reranker_gguf_models,
         )
 
@@ -554,7 +552,7 @@ class TestGGUFCrossEncoderExtra:
             patch.dict(sys.modules, {"llama_cpp": mock_llama_module}),
             patch.object(Qwen3CrossEncoderGGUF, "download_model", return_value=str(tmp_path)),
             patch(
-                "qwen3_embed.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
+                "fastretrieval.rerank.cross_encoder.gguf_cross_encoder.define_cache_dir",
                 return_value=tmp_path,
             ),
             pytest.raises(FileNotFoundError, match="GGUF model file not found"),

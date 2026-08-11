@@ -1,8 +1,8 @@
 import pytest
 
-import qwen3_embed.common.utils
-import qwen3_embed.rerank.cross_encoder.text_cross_encoder
-import qwen3_embed.text.text_embedding
+import fastretrieval.common.utils
+import fastretrieval.rerank.cross_encoder.text_cross_encoder
+import fastretrieval.text.text_embedding
 
 
 @pytest.fixture(autouse=True)
@@ -16,19 +16,19 @@ def _low_max_input_length(monkeypatch: pytest.MonkeyPatch) -> None:
     allocating a huge string, and the patch does not leak into other test
     modules collected in the same pytest session.
     """
-    monkeypatch.setattr(qwen3_embed.common.utils, "MAX_INPUT_LENGTH", 100)
+    monkeypatch.setattr(fastretrieval.common.utils, "MAX_INPUT_LENGTH", 100)
 
 
 def test_check_input_length():
-    qwen3_embed.common.utils.check_input_length("a" * 100)
+    fastretrieval.common.utils.check_input_length("a" * 100)
     with pytest.raises(ValueError):
-        qwen3_embed.common.utils.check_input_length("a" * 101)
+        fastretrieval.common.utils.check_input_length("a" * 101)
 
 
 def test_iter_checked_texts():
     texts = ["a" * 10, "b" * 100, "c" * 5]
-    assert list(qwen3_embed.common.utils.iter_checked_texts(texts)) == texts
-    iterator = qwen3_embed.common.utils.iter_checked_texts(["a" * 10, "b" * 101])
+    assert list(fastretrieval.common.utils.iter_checked_texts(texts)) == texts
+    iterator = fastretrieval.common.utils.iter_checked_texts(["a" * 10, "b" * 101])
     assert next(iter(iterator)) == "a" * 10
     with pytest.raises(ValueError):
         next(iter(iterator))
@@ -59,11 +59,11 @@ class MockModel:
 def test_text_embedding_limits(monkeypatch):
     with monkeypatch.context() as m:
         m.setattr(
-            qwen3_embed.text.text_embedding.TextEmbedding,
+            fastretrieval.text.text_embedding.TextEmbedding,
             "__init__",
             lambda self, *args, **kwargs: setattr(self, "model", MockModel()),
         )
-        te = qwen3_embed.text.text_embedding.TextEmbedding("dummy")
+        te = fastretrieval.text.text_embedding.TextEmbedding("dummy")
         with pytest.raises(ValueError):
             list(te.embed("a" * 101))
         with pytest.raises(ValueError):
@@ -78,11 +78,11 @@ def test_text_embedding_limits(monkeypatch):
 def test_text_cross_encoder_limits(monkeypatch):
     with monkeypatch.context() as m:
         m.setattr(
-            qwen3_embed.rerank.cross_encoder.text_cross_encoder.TextCrossEncoder,
+            fastretrieval.rerank.cross_encoder.text_cross_encoder.TextCrossEncoder,
             "__init__",
             lambda self, *args, **kwargs: setattr(self, "model", MockModel()),
         )
-        tce = qwen3_embed.rerank.cross_encoder.text_cross_encoder.TextCrossEncoder("dummy")
+        tce = fastretrieval.rerank.cross_encoder.text_cross_encoder.TextCrossEncoder("dummy")
         with pytest.raises(ValueError):
             list(tce.rerank("a" * 101, ["doc1"]))
         with pytest.raises(ValueError):
@@ -96,7 +96,7 @@ def test_text_cross_encoder_limits(monkeypatch):
 def test_define_cache_dir_symlink_prevention(tmp_path):
     import os
 
-    from qwen3_embed.common.utils import define_cache_dir
+    from fastretrieval.common.utils import define_cache_dir
 
     target_dir = tmp_path / "target"
     target_dir.mkdir(mode=0o777)

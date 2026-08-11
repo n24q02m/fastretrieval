@@ -1,8 +1,18 @@
-# CLAUDE.md - qwen3-embed
+# CLAUDE.md - fastretrieval
 
-Thu vien embedding va reranking Qwen3 qua ONNX Runtime va GGUF.
-Python >= 3.11 (ho tro 3.11-3.14), uv, hatchling. KHONG phai src layout -- package tai `qwen3_embed/`.
-Fork cua fastembed (Qdrant), chi giu Qwen3 models. License: Apache-2.0.
+Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract.
+Python >= 3.11 (ho tro 3.11-3.14), uv, hatchling. KHONG phai src layout -- package tai `fastretrieval/`.
+Derived from fastembed (Qdrant), voi Qwen3 adapters la built-in reference models; custom model
+contracts mo rong ra ngoai family nay. License: Apache-2.0.
+
+## Package identity
+
+- Distribution/import: `fastretrieval`.
+- Install: `pip install fastretrieval`; optional GGUF: `pip install fastretrieval[gguf]`.
+- Env moi: `FASTRETRIEVAL_CACHE_PATH` va `FASTRETRIEVAL_MAX_INPUT_LENGTH`.
+- Env tuong thich deprecated: `QWEN3_EMBED_CACHE_PATH` va `QWEN3_EMBED_MAX_INPUT_LENGTH`.
+  Ten moi duoc uu tien neu ca hai duoc dat; ten cu van doc duoc va phat `DeprecationWarning`.
+- Qwen3 model identifiers va adapter filenames giu nguyen vi day la model names.
 
 ## Commands
 
@@ -44,7 +54,7 @@ mise run fix       # ruff fix + format
 ## Cau truc thu muc
 
 ```
-qwen3_embed/                      # Main package (KHONG phai src layout)
+fastretrieval/                    # Main package (KHONG phai src layout)
   __init__.py                     # Public API: TextEmbedding, TextCrossEncoder
   py.typed                        # PEP 561 marker
   parallel_processor.py           # Multiprocessing worker pool
@@ -79,16 +89,16 @@ tests/
 
 ## CD Pipeline
 
-PSR v10 (workflow_dispatch) -> PyPI. Khong co Docker (la library, khong phai server).
+PSR v10 (workflow_dispatch) -> PyPI. Dockerfile cung cap stdio/http targets.
 
 ## Luu y
 
-- KHONG phai src layout: package truc tiep tai `qwen3_embed/`, khong phai `src/qwen3_embed/`.
+- KHONG phai src layout: package truc tiep tai `fastretrieval/`, khong phai `src/fastretrieval/`.
 - `requires-python = ">=3.11"` -- ho tro rong hon cac project khac (3.11-3.14).
-- Optional dependency: `pip install qwen3-embed[gguf]` cho llama-cpp-python.
+- Optional dependency: `pip install fastretrieval[gguf]` cho llama-cpp-python.
 - GPU auto-detect: ONNX (onnxruntime-gpu/directml), GGUF (llama-cpp-python CUDA build).
 - Last-token pooling (khong phai mean pooling) + MRL support (truncate 32-1024 dims).
 - YesNo reranker variant: ~10x it RAM (~598MB vs ~12GB).
 - Model cache: HuggingFace Hub cache directory.
 - Pre-commit: ruff lint + format, pytest unit only.
-- Secrets: skret SSM namespace `/qwen3-embed/prod` (region `ap-southeast-1`)
+- Secrets: dung namespace SSM/skret do repo cau hinh (region `ap-southeast-1`); khong hardcode credentials.

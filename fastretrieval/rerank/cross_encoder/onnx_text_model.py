@@ -6,14 +6,14 @@ from typing import Any
 import numpy as np
 from tokenizers import Encoding
 
-from qwen3_embed.common.onnx_model import (
+from fastretrieval.common.onnx_model import (
     EmbeddingWorker,
     OnnxModel,
     OnnxOutputContext,
 )
-from qwen3_embed.common.types import Device, NumpyArray
-from qwen3_embed.common.utils import iter_batch
-from qwen3_embed.parallel_processor import ParallelWorkerPool, PoolConfig
+from fastretrieval.common.types import Device, NumpyArray
+from fastretrieval.common.utils import iter_batch
+from fastretrieval.parallel_processor import ParallelWorkerPool, PoolConfig
 
 
 class OnnxCrossEncoderModel(OnnxModel[float]):

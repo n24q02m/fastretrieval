@@ -6,7 +6,7 @@ import pytest
 import requests
 from loguru import logger
 
-from qwen3_embed.common.model_management import ModelManagement
+from fastretrieval.common.model_management import ModelManagement
 
 
 class TestModelManagementExtra:
@@ -162,7 +162,7 @@ class TestModelManagementExtra:
         cache_dir.mkdir()
 
         # We patch the tarfile module in the model_management namespace
-        with patch("qwen3_embed.common.model_management.tarfile") as mock_tarfile_mod:
+        with patch("fastretrieval.common.model_management.tarfile") as mock_tarfile_mod:
             # Setup mock_tar
             mock_tar = MagicMock()
             mock_tarfile_mod.open.return_value.__enter__.return_value = mock_tar
@@ -211,7 +211,7 @@ class TestModelManagementExtra:
             args, _ = mock_log_error.call_args
             assert str(tar_path) in args[0]
 
-    @patch("qwen3_embed.common.model_management.model_info")
+    @patch("fastretrieval.common.model_management.model_info")
     def test_fetch_repo_files_no_sha_raises_value_error(self, mock_model_info):
         """Verify ValueError is raised if repo revision sha is None (line 289)."""
         mock_model_info.return_value = MagicMock(sha=None)

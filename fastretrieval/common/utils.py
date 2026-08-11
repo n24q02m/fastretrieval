@@ -1,6 +1,7 @@
 import contextlib
 import os
 import sys
+import warnings
 from collections.abc import Iterable
 from itertools import islice
 from pathlib import Path
@@ -9,12 +10,33 @@ from typing import TypeVar
 import numpy as np
 from numpy.typing import NDArray
 
-from qwen3_embed.common.types import NumpyArray
+from fastretrieval.common.types import NumpyArray
 
 T = TypeVar("T")
 
+
+def _get_compat_env(new_name: str, old_name: str) -> str | None:
+    """Read a renamed environment variable while preserving the old name."""
+    new_value = os.environ.get(new_name)
+    if new_value:
+        return new_value
+
+    old_value = os.environ.get(old_name)
+    if old_value:
+        warnings.warn(
+            f"{old_name} is deprecated; use {new_name} instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return old_value
+
+    return None
+
+
 # ⚡ Bolt: Security enhancement to prevent CPU/Memory exhaustion DoS
-MAX_INPUT_LENGTH = int(os.environ.get("QWEN3_EMBED_MAX_INPUT_LENGTH", 1000000))
+MAX_INPUT_LENGTH = int(
+    _get_compat_env("FASTRETRIEVAL_MAX_INPUT_LENGTH", "QWEN3_EMBED_MAX_INPUT_LENGTH") or 1000000
+)
 
 
 def check_input_length(text: str) -> None:
@@ -136,15 +158,16 @@ def iter_batch(iterable: Iterable[T], size: int) -> Iterable[list[T]]:
 
 def define_cache_dir(cache_dir: str | None = None) -> Path:
     """
-    Define the cache directory for qwen3_embed
+    Define the cache directory for fastretrieval
     """
     if cache_dir is None:
-        if os.environ.get("QWEN3_EMBED_CACHE_PATH"):
-            cache_path = Path(os.environ["QWEN3_EMBED_CACHE_PATH"])
+        env_cache_path = _get_compat_env("FASTRETRIEVAL_CACHE_PATH", "QWEN3_EMBED_CACHE_PATH")
+        if env_cache_path:
+            cache_path = Path(env_cache_path)
         else:
             xdg_cache_home = os.environ.get("XDG_CACHE_HOME")
             base_path = Path(xdg_cache_home) if xdg_cache_home else Path.home() / ".cache"
-            cache_path = base_path / "qwen3_embed"
+            cache_path = base_path / "fastretrieval"
     else:
         cache_path = Path(cache_dir)
     cache_path.mkdir(mode=0o700, parents=True, exist_ok=True)

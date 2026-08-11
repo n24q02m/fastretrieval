@@ -8,7 +8,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from qwen3_embed.common.utils import (
+from fastretrieval.common.utils import (
     check_input_length,
     define_cache_dir,
     iter_batch,
@@ -132,16 +132,16 @@ class TestIterBatch:
 
 
 class TestDefineCacheDir:
-    @patch("qwen3_embed.common.utils.Path.mkdir")
-    @patch("qwen3_embed.common.utils.Path.chmod")
+    @patch("fastretrieval.common.utils.Path.mkdir")
+    @patch("fastretrieval.common.utils.Path.chmod")
     def test_custom_argument(self, mock_chmod, mock_mkdir):
         res = define_cache_dir("/custom/arg/path")
         assert res == Path("/custom/arg/path")
         mock_mkdir.assert_called_once_with(mode=0o700, parents=True, exist_ok=True)
         mock_chmod.assert_called_once_with(0o700)
 
-    @patch("qwen3_embed.common.utils.Path.mkdir")
-    @patch("qwen3_embed.common.utils.Path.chmod")
+    @patch("fastretrieval.common.utils.Path.mkdir")
+    @patch("fastretrieval.common.utils.Path.chmod")
     @patch.dict(os.environ, {"QWEN3_EMBED_CACHE_PATH": "/custom/env/path"})
     def test_qwen3_cache_path(self, mock_chmod, mock_mkdir):
         res = define_cache_dir()
@@ -149,17 +149,17 @@ class TestDefineCacheDir:
         mock_mkdir.assert_called_once_with(mode=0o700, parents=True, exist_ok=True)
         mock_chmod.assert_called_once_with(0o700)
 
-    @patch("qwen3_embed.common.utils.Path.mkdir")
-    @patch("qwen3_embed.common.utils.Path.chmod")
+    @patch("fastretrieval.common.utils.Path.mkdir")
+    @patch("fastretrieval.common.utils.Path.chmod")
     @patch.dict(os.environ, {"XDG_CACHE_HOME": "/xdg/cache"}, clear=True)
     def test_xdg_cache_home(self, mock_chmod, mock_mkdir):
         res = define_cache_dir()
-        assert res == Path("/xdg/cache/qwen3_embed")
+        assert res == Path("/xdg/cache/fastretrieval")
         mock_mkdir.assert_called_once_with(mode=0o700, parents=True, exist_ok=True)
         mock_chmod.assert_called_once_with(0o700)
 
-    @patch("qwen3_embed.common.utils.Path.mkdir")
-    @patch("qwen3_embed.common.utils.Path.chmod")
+    @patch("fastretrieval.common.utils.Path.mkdir")
+    @patch("fastretrieval.common.utils.Path.chmod")
     def test_fallback_home_cache(self, mock_chmod, mock_mkdir):
         # Resolve the expected home dir BEFORE clearing the environment, since
         # Path.home() on Windows depends on env vars (USERPROFILE etc.) that
@@ -167,15 +167,15 @@ class TestDefineCacheDir:
         fake_home = Path.home()
         with (
             patch.dict(os.environ, {}, clear=True),
-            patch("qwen3_embed.common.utils.Path.home", return_value=fake_home),
+            patch("fastretrieval.common.utils.Path.home", return_value=fake_home),
         ):
             res = define_cache_dir()
-        assert res == fake_home / ".cache/qwen3_embed"
+        assert res == fake_home / ".cache/fastretrieval"
         mock_mkdir.assert_called_once_with(mode=0o700, parents=True, exist_ok=True)
         mock_chmod.assert_called_once_with(0o700)
 
-    @patch("qwen3_embed.common.utils.Path.mkdir")
-    @patch("qwen3_embed.common.utils.Path.chmod", side_effect=OSError("chmod failed"))
+    @patch("fastretrieval.common.utils.Path.mkdir")
+    @patch("fastretrieval.common.utils.Path.chmod", side_effect=OSError("chmod failed"))
     def test_chmod_oserror_suppressed(self, mock_chmod, mock_mkdir):
         res = define_cache_dir("/custom/arg/path")
         assert res == Path("/custom/arg/path")
@@ -188,9 +188,9 @@ class TestInputValidation:
 
     def test_check_input_length_valid(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Should not raise error when within limits."""
-        import qwen3_embed.common.utils
+        import fastretrieval.common.utils
 
-        monkeypatch.setattr(qwen3_embed.common.utils, "MAX_INPUT_LENGTH", 5)
+        monkeypatch.setattr(fastretrieval.common.utils, "MAX_INPUT_LENGTH", 5)
 
         # Exact limit
         check_input_length("abcde")
@@ -199,9 +199,9 @@ class TestInputValidation:
 
     def test_check_input_length_invalid(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Should raise ValueError when limit is exceeded."""
-        import qwen3_embed.common.utils
+        import fastretrieval.common.utils
 
-        monkeypatch.setattr(qwen3_embed.common.utils, "MAX_INPUT_LENGTH", 5)
+        monkeypatch.setattr(fastretrieval.common.utils, "MAX_INPUT_LENGTH", 5)
 
         with pytest.raises(
             ValueError, match="Input string exceeds maximum allowed length of 5 characters"
@@ -210,9 +210,9 @@ class TestInputValidation:
 
     def test_iter_checked_texts_valid(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Generator should yield all texts if they are within limits."""
-        import qwen3_embed.common.utils
+        import fastretrieval.common.utils
 
-        monkeypatch.setattr(qwen3_embed.common.utils, "MAX_INPUT_LENGTH", 5)
+        monkeypatch.setattr(fastretrieval.common.utils, "MAX_INPUT_LENGTH", 5)
 
         texts = ["abc", "de", "fghij"]
         result = list(iter_checked_texts(texts))
@@ -220,9 +220,9 @@ class TestInputValidation:
 
     def test_iter_checked_texts_invalid(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Generator should yield valid texts before raising ValueError on invalid one."""
-        import qwen3_embed.common.utils
+        import fastretrieval.common.utils
 
-        monkeypatch.setattr(qwen3_embed.common.utils, "MAX_INPUT_LENGTH", 5)
+        monkeypatch.setattr(fastretrieval.common.utils, "MAX_INPUT_LENGTH", 5)
 
         texts = ["abc", "abcdef", "valid"]
         iterator = iter(iter_checked_texts(texts))
@@ -235,10 +235,10 @@ class TestInputValidation:
 
     def test_check_input_length_extremely_long(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Should raise ValueError when input is extremely long (exceeds 1,000,000)."""
-        import qwen3_embed.common.utils
+        import fastretrieval.common.utils
 
         # Explicitly set to 1,000,000 to avoid interference from other tests
-        monkeypatch.setattr(qwen3_embed.common.utils, "MAX_INPUT_LENGTH", 1000000)
+        monkeypatch.setattr(fastretrieval.common.utils, "MAX_INPUT_LENGTH", 1000000)
 
         # Test with the default 1,000,000 limit
         with pytest.raises(

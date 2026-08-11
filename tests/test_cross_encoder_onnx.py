@@ -13,15 +13,15 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from qwen3_embed.common.model_description import BaseModelDescription, ModelSource
-from qwen3_embed.common.onnx_model import OnnxOutputContext, OnnxSessionConfig
-from qwen3_embed.common.types import NumpyArray
-from qwen3_embed.rerank.cross_encoder.onnx_text_cross_encoder import (
+from fastretrieval.common.model_description import BaseModelDescription, ModelSource
+from fastretrieval.common.onnx_model import OnnxOutputContext, OnnxSessionConfig
+from fastretrieval.common.types import NumpyArray
+from fastretrieval.rerank.cross_encoder.onnx_text_cross_encoder import (
     OnnxTextCrossEncoder,
     TextCrossEncoderWorker,
     supported_onnx_models,
 )
-from qwen3_embed.rerank.cross_encoder.onnx_text_model import (
+from fastretrieval.rerank.cross_encoder.onnx_text_model import (
     OnnxCrossEncoderModel,
     TextRerankerWorker,
 )
@@ -405,7 +405,7 @@ class TestRerankPairsParallelBranch:
 
     def test_parallel_zero_uses_cpu_count(self, loaded_model: ConcreteCrossEncoderModel) -> None:
         out = OnnxOutputContext(model_output=np.array([0.5, 0.6]))
-        with patch("qwen3_embed.rerank.cross_encoder.onnx_text_model.ParallelWorkerPool") as cls:
+        with patch("fastretrieval.rerank.cross_encoder.onnx_text_model.ParallelWorkerPool") as cls:
             pool = MagicMock()
             pool.ordered_map.return_value = [out]
             cls.return_value = pool
@@ -424,7 +424,7 @@ class TestRerankPairsParallelBranch:
         self, loaded_model: ConcreteCrossEncoderModel
     ) -> None:
         out = OnnxOutputContext(model_output=np.array([0.5]))
-        with patch("qwen3_embed.rerank.cross_encoder.onnx_text_model.ParallelWorkerPool") as cls:
+        with patch("fastretrieval.rerank.cross_encoder.onnx_text_model.ParallelWorkerPool") as cls:
             pool = MagicMock()
             pool.ordered_map.return_value = [out]
             cls.return_value = pool
@@ -444,7 +444,7 @@ class TestRerankPairsParallelBranch:
         self, loaded_model: ConcreteCrossEncoderModel
     ) -> None:
         out = OnnxOutputContext(model_output=np.array([0.5]))
-        with patch("qwen3_embed.rerank.cross_encoder.onnx_text_model.ParallelWorkerPool") as cls:
+        with patch("fastretrieval.rerank.cross_encoder.onnx_text_model.ParallelWorkerPool") as cls:
             pool = MagicMock()
             pool.ordered_map.return_value = [out]
             cls.return_value = pool
@@ -464,7 +464,7 @@ class TestRerankPairsParallelBranch:
         self, loaded_model: ConcreteCrossEncoderModel
     ) -> None:
         out = OnnxOutputContext(model_output=np.array([0.5]))
-        with patch("qwen3_embed.rerank.cross_encoder.onnx_text_model.ParallelWorkerPool") as cls:
+        with patch("fastretrieval.rerank.cross_encoder.onnx_text_model.ParallelWorkerPool") as cls:
             pool = MagicMock()
             pool.ordered_map.return_value = [out]
             cls.return_value = pool
@@ -557,9 +557,9 @@ class TestLoadOnnxModel:
         mock_tokenizer = MagicMock()
 
         with (
-            patch("qwen3_embed.common.onnx_model.ort") as mock_ort,
+            patch("fastretrieval.common.onnx_model.ort") as mock_ort,
             patch(
-                "qwen3_embed.common.onnx_model.load_tokenizer",
+                "fastretrieval.common.onnx_model.load_tokenizer",
                 return_value=(mock_tokenizer, {}),
             ),
         ):
@@ -646,7 +646,7 @@ class TestOnnxTextCrossEncoderInit:
         with (
             patch.object(OnnxTextCrossEncoder, "download_model", return_value=tmp_path),
             patch(
-                "qwen3_embed.rerank.cross_encoder.onnx_text_cross_encoder.logger"
+                "fastretrieval.rerank.cross_encoder.onnx_text_cross_encoder.logger"
             ) as mock_logger,
         ):
             OnnxTextCrossEncoder(model_name=_MODEL_NAME, lazy_load=True, device_ids=[0, 1, 2])
@@ -725,7 +725,7 @@ class TestOnnxTextCrossEncoderRerankPairs:
     ) -> None:
         out = OnnxOutputContext(model_output=np.array([0.9, 0.1]))
         pairs = [("q", f"d{i}") for i in range(10)]
-        with patch("qwen3_embed.rerank.cross_encoder.onnx_text_model.ParallelWorkerPool") as cls:
+        with patch("fastretrieval.rerank.cross_encoder.onnx_text_model.ParallelWorkerPool") as cls:
             pool = MagicMock()
             pool.ordered_map.return_value = [out]
             cls.return_value = pool

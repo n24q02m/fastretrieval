@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import qwen3_embed.parallel_processor as pp_module
-from qwen3_embed.parallel_processor import (
+import fastretrieval.parallel_processor as pp_module
+from fastretrieval.parallel_processor import (
     ParallelWorkerPool,
     PoolConfig,
     QueueSignals,
@@ -448,7 +448,9 @@ def test_worker_processing_exception_handling():
     # Mock _get_items_from_queue to return a single item then stop
     # This triggers worker.process() and then the exception.
     with (
-        patch("qwen3_embed.parallel_processor._get_items_from_queue", return_value=[(0, "item")]),
+        patch(
+            "fastretrieval.parallel_processor._get_items_from_queue", return_value=[(0, "item")]
+        ),
         pytest.raises(RuntimeError),
     ):
         _worker(
@@ -481,7 +483,7 @@ def test_worker_success_path():
 
     # Mock _get_items_from_queue to return items then stop
     # We yield (0, 10) then stop.
-    with patch("qwen3_embed.parallel_processor._get_items_from_queue", return_value=[(0, 10)]):
+    with patch("fastretrieval.parallel_processor._get_items_from_queue", return_value=[(0, 10)]):
         _worker(
             worker_class=SquareWorker,
             input_queue=input_queue,
@@ -507,7 +509,7 @@ def test_worker_none_kwargs():
     num_active_workers.value = 1
     worker_id = 0
 
-    with patch("qwen3_embed.parallel_processor._get_items_from_queue", return_value=[]):
+    with patch("fastretrieval.parallel_processor._get_items_from_queue", return_value=[]):
         _worker(
             worker_class=SquareWorker,
             input_queue=input_queue,

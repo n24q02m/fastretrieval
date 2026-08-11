@@ -1,8 +1,8 @@
 from typing import Any
 
-from qwen3_embed.common.model_description import BaseModelDescription
-from qwen3_embed.rerank.cross_encoder.onnx_text_cross_encoder import OnnxTextCrossEncoder
-from qwen3_embed.rerank.cross_encoder.onnx_text_model import TextRerankerWorker
+from fastretrieval.common.model_description import BaseModelDescription
+from fastretrieval.rerank.cross_encoder.onnx_text_cross_encoder import OnnxTextCrossEncoder
+from fastretrieval.rerank.cross_encoder.onnx_text_model import TextRerankerWorker
 
 
 class CustomTextCrossEncoder(OnnxTextCrossEncoder):
@@ -19,7 +19,7 @@ class CustomTextCrossEncoder(OnnxTextCrossEncoder):
     ) -> None:
         cls._clear_model_cache()
         cls.SUPPORTED_MODELS.append(model_description)
-        from qwen3_embed.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
+        from fastretrieval.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
 
         TextCrossEncoder._clear_model_cache()
 

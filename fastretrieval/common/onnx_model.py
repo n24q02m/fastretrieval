@@ -10,9 +10,9 @@ from loguru import logger
 from numpy.typing import NDArray
 from tokenizers import Tokenizer
 
-from qwen3_embed.common.preprocessor_utils import load_tokenizer
-from qwen3_embed.common.types import Device, NumpyArray, OnnxProvider
-from qwen3_embed.parallel_processor import Worker
+from fastretrieval.common.preprocessor_utils import load_tokenizer
+from fastretrieval.common.types import Device, NumpyArray, OnnxProvider
+from fastretrieval.parallel_processor import Worker
 
 # Holds type of the embedding result
 T = TypeVar("T")

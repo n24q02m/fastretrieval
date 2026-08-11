@@ -1,6 +1,6 @@
 import pytest
 
-from qwen3_embed.common.model_description import DenseModelDescription, ModelSource
+from fastretrieval.common.model_description import DenseModelDescription, ModelSource
 
 
 def test_model_source_valid_hf():

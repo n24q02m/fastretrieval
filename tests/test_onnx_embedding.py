@@ -3,9 +3,9 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from qwen3_embed.common.model_description import DenseModelDescription, ModelSource
-from qwen3_embed.common.onnx_model import OnnxOutputContext
-from qwen3_embed.text.onnx_embedding import OnnxTextEmbedding, OnnxTextEmbeddingWorker
+from fastretrieval.common.model_description import DenseModelDescription, ModelSource
+from fastretrieval.common.onnx_model import OnnxOutputContext
+from fastretrieval.text.onnx_embedding import OnnxTextEmbedding, OnnxTextEmbeddingWorker
 
 _MODEL_NAME = "test-org/test-model"
 _MODEL_DESC = DenseModelDescription(
@@ -19,10 +19,10 @@ _MODEL_DESC = DenseModelDescription(
 )
 
 
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding.download_model")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding.load_onnx_model")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding.download_model")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding.load_onnx_model")
 def test_onnx_text_embedding_init_lazy_load(
     mock_load_onnx_model: MagicMock,
     mock_download_model: MagicMock,
@@ -41,10 +41,10 @@ def test_onnx_text_embedding_init_lazy_load(
     mock_get_model_description.assert_called_once_with(_MODEL_NAME)
 
 
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding.download_model")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding.load_onnx_model")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding.download_model")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding.load_onnx_model")
 def test_onnx_text_embedding_init_no_lazy_load(
     mock_load_onnx_model: MagicMock,
     mock_download_model: MagicMock,
@@ -61,10 +61,10 @@ def test_onnx_text_embedding_init_no_lazy_load(
     assert embedding.lazy_load is False
 
 
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding.download_model")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._embed_documents")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding.download_model")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._embed_documents")
 def test_onnx_text_embedding_embed(
     mock_embed_documents: MagicMock,
     mock_download_model: MagicMock,
@@ -96,9 +96,9 @@ def test_onnx_text_embedding_embed(
     assert kwargs["parallel"] == 4
 
 
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding.download_model")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding.download_model")
 def test_onnx_text_embedding_preprocess_input(
     mock_download_model: MagicMock,
     mock_get_model_description: MagicMock,
@@ -116,10 +116,10 @@ def test_onnx_text_embedding_preprocess_input(
     assert output_dict is input_dict
 
 
-@patch("qwen3_embed.text.onnx_embedding.normalize")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding.download_model")
+@patch("fastretrieval.text.onnx_embedding.normalize")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding.download_model")
 def test_onnx_text_embedding_postprocess_2d(
     mock_download_model: MagicMock,
     mock_get_model_description: MagicMock,
@@ -142,10 +142,10 @@ def test_onnx_text_embedding_postprocess_2d(
     assert np.array_equal(mock_normalize.call_args[0][0], model_output)
 
 
-@patch("qwen3_embed.text.onnx_embedding.normalize")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding.download_model")
+@patch("fastretrieval.text.onnx_embedding.normalize")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._select_exposed_session_options")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding._get_model_description")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding.download_model")
 def test_onnx_text_embedding_postprocess_3d(
     mock_download_model: MagicMock,
     mock_get_model_description: MagicMock,
@@ -171,7 +171,7 @@ def test_onnx_text_embedding_postprocess_3d(
     assert np.array_equal(mock_normalize.call_args[0][0], expected_slice)
 
 
-@patch("qwen3_embed.text.onnx_embedding.OnnxTextEmbedding")
+@patch("fastretrieval.text.onnx_embedding.OnnxTextEmbedding")
 def test_onnx_text_embedding_worker_init(
     mock_onnx_embedding: MagicMock,
 ) -> None:

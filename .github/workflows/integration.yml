@@ -27,7 +27,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "qwen3_embed/**"
+      - "fastretrieval/**"
       - "tests/**"
       - "pyproject.toml"
       - "uv.lock"
@@ -35,7 +35,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "qwen3_embed/**"
+      - "fastretrieval/**"
       - "tests/**"
       - "pyproject.toml"
       - "uv.lock"
@@ -92,8 +92,8 @@ jobs:
         id: model-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.cache/qwen3_embed
-          key: qwen3-embed-models-v1
+          path: ~/.cache/fastretrieval
+          key: fastretrieval-models-v1
 
       - name: Install dependencies
         run: uv sync --python 3.13 --group dev
@@ -121,7 +121,7 @@ jobs:
           uv run python - <<'PY'
           import time
 
-          from qwen3_embed import TextCrossEncoder, TextEmbedding
+          from fastretrieval import TextCrossEncoder, TextEmbedding
 
           EMBEDDINGS = [
               "n24q02m/Qwen3-Embedding-0.6B-ONNX",
@@ -148,8 +148,8 @@ jobs:
         if: steps.model-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.cache/qwen3_embed
-          key: qwen3-embed-models-v1
+          path: ~/.cache/fastretrieval
+          key: fastretrieval-models-v1
 
       # The `gguf` extra is deliberately absent from the dev install: llama-cpp-python
       # 0.3.34 ships an sdist only -- no wheels for any platform -- so installing it

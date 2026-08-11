@@ -8,15 +8,15 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from qwen3_embed.common.model_description import DenseModelDescription, ModelSource
-from qwen3_embed.common.onnx_model import OnnxOutputContext, OnnxSessionConfig
-from qwen3_embed.common.types import NumpyArray
-from qwen3_embed.text.onnx_embedding import (
+from fastretrieval.common.model_description import DenseModelDescription, ModelSource
+from fastretrieval.common.onnx_model import OnnxOutputContext, OnnxSessionConfig
+from fastretrieval.common.types import NumpyArray
+from fastretrieval.text.onnx_embedding import (
     OnnxTextEmbedding,
     OnnxTextEmbeddingWorker,
     supported_onnx_models,
 )
-from qwen3_embed.text.onnx_text_model import OnnxTextModel, TextEmbeddingWorker
+from fastretrieval.text.onnx_text_model import OnnxTextModel, TextEmbeddingWorker
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -265,9 +265,9 @@ class TestOnnxTextModelLoadOnnxModel:
         mock_special: dict[str, int] = {"<s>": 1}
 
         with (
-            patch("qwen3_embed.common.onnx_model.ort") as mock_ort,
+            patch("fastretrieval.common.onnx_model.ort") as mock_ort,
             patch(
-                "qwen3_embed.common.onnx_model.load_tokenizer",
+                "fastretrieval.common.onnx_model.load_tokenizer",
                 return_value=(mock_tokenizer, mock_special),
             ),
         ):
@@ -372,7 +372,7 @@ class TestOnnxTextModelEmbedDocuments:
     def test_parallel_zero_creates_pool(self) -> None:
         m = self._loaded()
         out = OnnxOutputContext(model_output=np.ones((1, 4), dtype=np.float32))
-        with patch("qwen3_embed.text.onnx_text_model.ParallelWorkerPool") as mock_cls:
+        with patch("fastretrieval.text.onnx_text_model.ParallelWorkerPool") as mock_cls:
             pool = MagicMock()
             pool.ordered_map.return_value = [out]
             mock_cls.return_value = pool
@@ -386,7 +386,7 @@ class TestOnnxTextModelEmbedDocuments:
     def test_parallel_positive_sets_num_workers(self) -> None:
         m = self._loaded()
         out = OnnxOutputContext(model_output=np.ones((1, 4), dtype=np.float32))
-        with patch("qwen3_embed.text.onnx_text_model.ParallelWorkerPool") as mock_cls:
+        with patch("fastretrieval.text.onnx_text_model.ParallelWorkerPool") as mock_cls:
             pool = MagicMock()
             pool.ordered_map.return_value = [out]
             mock_cls.return_value = pool
@@ -401,7 +401,7 @@ class TestOnnxTextModelEmbedDocuments:
     def test_parallel_extra_session_options_merged(self) -> None:
         m = self._loaded()
         out = OnnxOutputContext(model_output=np.ones((1, 4), dtype=np.float32))
-        with patch("qwen3_embed.text.onnx_text_model.ParallelWorkerPool") as mock_cls:
+        with patch("fastretrieval.text.onnx_text_model.ParallelWorkerPool") as mock_cls:
             pool = MagicMock()
             pool.ordered_map.return_value = [out]
             mock_cls.return_value = pool
@@ -421,7 +421,7 @@ class TestOnnxTextModelEmbedDocuments:
         """start_method selection doesn't crash."""
         m = self._loaded()
         out = OnnxOutputContext(model_output=np.ones((1, 4), dtype=np.float32))
-        with patch("qwen3_embed.text.onnx_text_model.ParallelWorkerPool") as mock_cls:
+        with patch("fastretrieval.text.onnx_text_model.ParallelWorkerPool") as mock_cls:
             pool = MagicMock()
             pool.ordered_map.return_value = [out]
             mock_cls.return_value = pool
@@ -716,7 +716,7 @@ class TestOnnxTextModelRobustness:
         m.tokenizer = _make_mock_tokenizer()  # type: ignore[invalid-assignment]
 
         # parallel=2 but only 1 document, batch_size=256
-        with patch("qwen3_embed.text.onnx_text_model.ParallelWorkerPool") as mock_pool:
+        with patch("fastretrieval.text.onnx_text_model.ParallelWorkerPool") as mock_pool:
             results = list(m._embed_documents("t", "/tmp", documents=["hi"], parallel=2))
             assert len(results) == 1
             mock_pool.assert_not_called()
@@ -731,7 +731,7 @@ class TestOnnxTextModelRobustness:
         m.tokenizer = _make_mock_tokenizer()  # type: ignore[invalid-assignment]
 
         out = OnnxOutputContext(model_output=np.ones((1, 4)))
-        with patch("qwen3_embed.text.onnx_text_model.ParallelWorkerPool") as mock_cls:
+        with patch("fastretrieval.text.onnx_text_model.ParallelWorkerPool") as mock_cls:
             pool = MagicMock()
             pool.ordered_map.return_value = [out]
             mock_cls.return_value = pool

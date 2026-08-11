@@ -1,30 +1,22 @@
 from collections.abc import Iterable
 from typing import Any
 
-import numpy as np
-from numpy.typing import NDArray
+from fastretrieval.common.model_description import DenseModelDescription
+from fastretrieval.common.onnx_model import OnnxOutputContext
+from fastretrieval.common.types import NumpyArray
+from fastretrieval.common.utils import normalize
+from fastretrieval.text.onnx_embedding import OnnxTextEmbedding, OnnxTextEmbeddingWorker
+from fastretrieval.text.pooled_embedding import PooledEmbedding
 
-from qwen3_embed.common.model_description import DenseModelDescription
-from qwen3_embed.common.onnx_model import OnnxOutputContext
-from qwen3_embed.common.types import NumpyArray
-from qwen3_embed.common.utils import mean_pooling
-from qwen3_embed.text.onnx_embedding import OnnxTextEmbedding, OnnxTextEmbeddingWorker
-
-# Base class model list kept empty — mean pooling models can be added
-# at runtime via TextEmbedding.add_custom_model(pooling=PoolingType.MEAN).
-supported_pooled_models: list[DenseModelDescription] = []
+# Base class model list kept empty — mean+normalize pooling models can be added at runtime
+# via TextEmbedding.add_custom_model(pooling=PoolingType.MEAN, normalization=True).
+supported_pooled_normalized_models: list[DenseModelDescription] = []
 
 
-class PooledEmbedding(OnnxTextEmbedding):
+class PooledNormalizedEmbedding(PooledEmbedding):
     @classmethod
     def _get_worker_class(cls) -> type[OnnxTextEmbeddingWorker]:
-        return PooledEmbeddingWorker
-
-    @classmethod
-    def mean_pooling(
-        cls, model_output: NumpyArray, attention_mask: NDArray[np.int64]
-    ) -> NumpyArray:
-        return mean_pooling(model_output, attention_mask)
+        return PooledNormalizedEmbeddingWorker
 
     @classmethod
     def _list_supported_models(cls) -> list[DenseModelDescription]:
@@ -33,7 +25,7 @@ class PooledEmbedding(OnnxTextEmbedding):
         Returns:
             list[DenseModelDescription]: A list of DenseModelDescription objects containing the model information.
         """
-        return supported_pooled_models
+        return supported_pooled_normalized_models
 
     def _post_process_onnx_output(
         self, output: OnnxOutputContext, **kwargs: Any
@@ -50,17 +42,17 @@ class PooledEmbedding(OnnxTextEmbedding):
         if dim is not None:
             pooled = pooled[:, :dim]
 
-        return pooled
+        return normalize(pooled)
 
 
-class PooledEmbeddingWorker(OnnxTextEmbeddingWorker):
+class PooledNormalizedEmbeddingWorker(OnnxTextEmbeddingWorker):
     def init_embedding(
         self,
         model_name: str,
         cache_dir: str,
         **kwargs: Any,
     ) -> OnnxTextEmbedding:
-        return PooledEmbedding(
+        return PooledNormalizedEmbedding(
             model_name=model_name,
             cache_dir=cache_dir,
             threads=1,

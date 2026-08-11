@@ -7,13 +7,13 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from qwen3_embed.common.onnx_model import (
+from fastretrieval.common.onnx_model import (
     EmbeddingWorker,
     OnnxModel,
     OnnxOutputContext,
     OnnxSessionConfig,
 )
-from qwen3_embed.common.types import Device
+from fastretrieval.common.types import Device
 
 # Production code builds the model path via ``Path(model_dir) / model_file``,
 # which renders with the platform-native separator (``\`` on Windows, ``/`` on
@@ -44,8 +44,8 @@ def model():
 @pytest.fixture
 def mock_ort():
     with (
-        patch("qwen3_embed.common.onnx_model.ort") as mock,
-        patch("qwen3_embed.common.onnx_model.load_tokenizer", return_value=(MagicMock(), {})),
+        patch("fastretrieval.common.onnx_model.ort") as mock,
+        patch("fastretrieval.common.onnx_model.load_tokenizer", return_value=(MagicMock(), {})),
     ):
         # Default behavior: CPU provider available, no CUDA
         mock.get_available_providers.return_value = ["CPUExecutionProvider"]

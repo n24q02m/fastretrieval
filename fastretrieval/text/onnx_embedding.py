@@ -1,12 +1,12 @@
 from collections.abc import Iterable, Sequence
 from typing import Any
 
-from qwen3_embed.common.model_description import DenseModelDescription
-from qwen3_embed.common.onnx_model import OnnxOutputContext, OnnxSessionConfig
-from qwen3_embed.common.types import Device, NumpyArray, OnnxProvider
-from qwen3_embed.common.utils import define_cache_dir, normalize
-from qwen3_embed.text.onnx_text_model import OnnxTextModel, TextEmbeddingWorker
-from qwen3_embed.text.text_embedding_base import TextEmbeddingBase
+from fastretrieval.common.model_description import DenseModelDescription
+from fastretrieval.common.onnx_model import OnnxOutputContext, OnnxSessionConfig
+from fastretrieval.common.types import Device, NumpyArray, OnnxProvider
+from fastretrieval.common.utils import define_cache_dir, normalize
+from fastretrieval.text.onnx_text_model import OnnxTextModel, TextEmbeddingWorker
+from fastretrieval.text.text_embedding_base import TextEmbeddingBase
 
 # Base class model list kept empty — Qwen3 models are registered
 # in qwen3_embedding.py. Custom models can be added at runtime
@@ -44,8 +44,8 @@ class OnnxTextEmbedding(TextEmbeddingBase, OnnxTextModel[NumpyArray]):
         Args:
             model_name (str): The name of the model to use.
             cache_dir (str, optional): The path to the cache directory.
-                                       Can be set using the `qwen3_embed_CACHE_PATH` env variable.
-                                       Defaults to `qwen3_embed_cache` in the system's temp directory.
+                                       Can be set using the `FASTRETRIEVAL_CACHE_PATH` env variable.
+                                       Defaults to `fastretrieval` in the user's cache directory.
             threads (int, optional): The number of threads single onnxruntime session can use. Defaults to None.
             providers (Optional[Sequence[OnnxProvider]], optional): The list of onnxruntime providers to use.
                 Mutually exclusive with the `cuda` and `device_ids` arguments. Defaults to None.

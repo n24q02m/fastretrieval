@@ -1,12 +1,12 @@
-# Qwen3 Embed
+# fastretrieval
 
-**Lightweight Qwen3 text embedding and reranking via ONNX Runtime and GGUF**
+**Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract**
 
 <!-- Badge Row 1: Status -->
-[![CI](https://github.com/n24q02m/qwen3-embed/actions/workflows/ci.yml/badge.svg)](https://github.com/n24q02m/qwen3-embed/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/n24q02m/qwen3-embed/graph/badge.svg?token=M038M651L2)](https://codecov.io/gh/n24q02m/qwen3-embed)
-[![PyPI](https://img.shields.io/pypi/v/qwen3-embed?logo=pypi&logoColor=white)](https://pypi.org/project/qwen3-embed/)
-[![License: Apache-2.0](https://img.shields.io/github/license/n24q02m/qwen3-embed)](LICENSE)
+[![CI](https://github.com/n24q02m/fastretrieval/actions/workflows/ci.yml/badge.svg)](https://github.com/n24q02m/fastretrieval/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/n24q02m/fastretrieval/graph/badge.svg?token=M038M651L2)](https://codecov.io/gh/n24q02m/fastretrieval)
+[![PyPI](https://img.shields.io/pypi/v/fastretrieval?logo=pypi&logoColor=white)](https://pypi.org/project/fastretrieval/)
+[![License: Apache-2.0](https://img.shields.io/github/license/n24q02m/fastretrieval)](LICENSE)
 
 <!-- Badge Row 2: Tech -->
 [![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](#)
@@ -35,7 +35,7 @@
 | [jules-task-archiver](https://github.com/n24q02m/jules-task-archiver) | Chrome Extension for bulk operations on Jules tasks via batchexecute API -- a... | Tooling |
 | [mcp-core](https://github.com/n24q02m/mcp-core) | Shared foundation for building MCP servers -- Streamable HTTP transport, OAut... | MCP |
 | [mnemo-mcp](https://github.com/n24q02m/mnemo-mcp) | Persistent AI memory with hybrid search and embedded sync. Open, free, unlimi... | MCP |
-| [qwen3-embed](https://github.com/n24q02m/qwen3-embed) | Lightweight Qwen3 text embedding and reranking via ONNX Runtime and GGUF | Library |
+| [fastretrieval](https://github.com/n24q02m/fastretrieval) | Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract | Library |
 | [skret](https://github.com/n24q02m/skret) | Secrets without the server. | CLI |
 | [tacet](https://github.com/n24q02m/tacet) | A self-distilling neuro-symbolic cascade that amortises LLM cost across knowl... | Tooling |
 | [web-core](https://github.com/n24q02m/web-core) | Shared web infrastructure package for search, scraping, HTTP security, and st... | Library |
@@ -46,11 +46,12 @@
 
 ## What it is
 
-`qwen3-embed` is a lightweight Python library for **text embedding** and **reranking** with
-Qwen3 0.6B models. It runs on ONNX Runtime or GGUF (`llama-cpp-python`) with **no PyTorch
-dependency**, supports Matryoshka (MRL) truncation, instruction-aware queries, and optional
-GPU acceleration. It is a trimmed fork of [fastembed](https://github.com/qdrant/fastembed)
-that keeps only the Qwen3 models, and any ONNX-able model can be registered as a custom model.
+`fastretrieval` is a Python runtime for **multi-model retrieval** with text embeddings and
+reranking on ONNX Runtime or GGUF (`llama-cpp-python`) with **no PyTorch dependency**. It
+uses a declarative model contract so built-in Qwen3 reference models and custom models can
+share the same runtime, and supports Matryoshka (MRL) truncation, instruction-aware queries,
+and optional GPU acceleration. It is derived from [fastembed](https://github.com/qdrant/fastembed)
+and keeps Qwen3 model names as model identifiers rather than as the package boundary.
 
 ## Table of contents
 
@@ -59,6 +60,7 @@ that keeps only the Qwen3 models, and any ONNX-able model can be registered as a
 - [Installation](#installation)
 - [Usage](#usage)
 - [Configuration](#configuration)
+- [Migrating from qwen3-embed](#migrating-from-qwen3-embed)
 - [Development](#development)
 - [Related Projects](#related-projects)
 - [Contributing](#contributing)
@@ -72,9 +74,12 @@ that keeps only the Qwen3 models, and any ONNX-able model can be registered as a
 - **Causal LM reranking**: Reranker uses yes/no logit scoring via causal language model, producing calibrated [0, 1] scores.
 - **Multiple backends**: ONNX Runtime (INT8, Q4F16) and GGUF (Q4_K_M via llama-cpp-python).
 - **GPU optional, no PyTorch**: Runs on ONNX Runtime or llama-cpp-python -- no heavy ML framework required. Auto-detects GPU (CUDA, DirectML) when available.
-- **Multilingual**: Both models support multi-language inputs.
+- **Multilingual**: Built-in Qwen3 reference models support multi-language inputs.
 
 ## Supported Models
+
+The entries below are the built-in Qwen3 reference models. Other model families can be
+registered through the declarative model contract.
 
 ### ONNX (default)
 
@@ -103,10 +108,10 @@ that keeps only the Qwen3 models, and any ONNX-able model can be registered as a
 ## Installation
 
 ```bash
-pip install qwen3-embed
+pip install fastretrieval
 
 # For GGUF support
-pip install qwen3-embed[gguf]
+pip install fastretrieval[gguf]
 ```
 
 ## Usage
@@ -114,7 +119,7 @@ pip install qwen3-embed[gguf]
 ### Text Embedding
 
 ```python
-from qwen3_embed import TextEmbedding
+from fastretrieval import TextEmbedding
 
 # INT8 (default)
 model = TextEmbedding(model_name="n24q02m/Qwen3-Embedding-0.6B-ONNX")
@@ -122,7 +127,7 @@ model = TextEmbedding(model_name="n24q02m/Qwen3-Embedding-0.6B-ONNX")
 # Q4F16 (smaller, slightly less accurate)
 model = TextEmbedding(model_name="n24q02m/Qwen3-Embedding-0.6B-ONNX-Q4F16")
 
-# GGUF (requires: pip install qwen3-embed[gguf])
+# GGUF (requires: pip install fastretrieval[gguf])
 model = TextEmbedding(model_name="n24q02m/Qwen3-Embedding-0.6B-GGUF")
 
 documents = [
@@ -149,7 +154,7 @@ queries = list(
 ### Reranking
 
 ```python
-from qwen3_embed import TextCrossEncoder
+from fastretrieval import TextCrossEncoder
 
 reranker = TextCrossEncoder(model_name="n24q02m/Qwen3-Reranker-0.6B-ONNX")
 
@@ -179,17 +184,16 @@ pair_scores = list(reranker.rerank_pairs(pairs))
 Reranker scores are **batch-invariant**: the score of a `(query, document)` pair
 does not depend on batch size or the other documents scored in the same call.
 ONNX reranker variants are scored one sequence at a time (no padding), which keeps
-RoPE positions correct regardless of batch composition. See issue
-[#725](https://github.com/n24q02m/qwen3-embed/issues/725).
+RoPE positions correct regardless of batch composition.
 
 ### Custom models (bring your own)
 
-Qwen3 is the only built-in model, but any ONNX-able embedding model can be
+Qwen3 models are built-in reference models, but any ONNX-able embedding model can be
 registered and then loaded by id. Use `CustomModelSpec` with one of the four
 output shapes: `CLS`/`MEAN` (bert-bi), `LAST_TOKEN` (causal), or `DISABLED` (raw).
 
 ```python
-from qwen3_embed import CustomModelSpec, TextEmbedding
+from fastretrieval import CustomModelSpec, TextEmbedding
 
 # Multilingual (incl. Vietnamese) + code, CLS-pooled, 768-dim
 CustomModelSpec(
@@ -215,7 +219,7 @@ cross-encoder (a single relevance logit per pair — `bge-reranker`, `gte-rerank
 `ms-marco`, `jina-reranker`) works; there is no `dim`/`pooling` to set:
 
 ```python
-from qwen3_embed import CustomRerankerSpec, TextCrossEncoder
+from fastretrieval import CustomRerankerSpec, TextCrossEncoder
 
 CustomRerankerSpec(
     model_id="onnx-community/gte-multilingual-reranker-base",
@@ -232,12 +236,25 @@ deps don't co-resolve with the lean runtime pins):
 
 ```python
 # pip install "optimum[exporters]" torch transformers onnx
-from qwen3_embed.export import export_to_onnx
+from fastretrieval.export import export_to_onnx
 
 export_to_onnx("intfloat/multilingual-e5-base", "./e5-onnx")
 ```
 
 ## Configuration
+
+### Environment variables
+
+| Variable | Purpose |
+|:---------|:--------|
+| `FASTRETRIEVAL_CACHE_PATH` | Override the model cache directory. |
+| `FASTRETRIEVAL_MAX_INPUT_LENGTH` | Override the maximum accepted input length. |
+| `QWEN3_EMBED_CACHE_PATH` | Deprecated compatibility alias for `FASTRETRIEVAL_CACHE_PATH`. |
+| `QWEN3_EMBED_MAX_INPUT_LENGTH` | Deprecated compatibility alias for `FASTRETRIEVAL_MAX_INPUT_LENGTH`. |
+
+The `FASTRETRIEVAL_*` names take precedence when both names are set. The deprecated
+`QWEN3_EMBED_*` names remain readable and emit a `DeprecationWarning` so existing
+configurations do not silently stop working.
 
 ### GPU Acceleration
 
@@ -254,7 +271,7 @@ pip install onnxruntime-directml  # Windows AMD/Intel/NVIDIA
 ```
 
 ```python
-from qwen3_embed import TextEmbedding, Device
+from fastretrieval import TextEmbedding, Device
 
 # Auto-detect GPU (default)
 model = TextEmbedding(model_name="n24q02m/Qwen3-Embedding-0.6B-ONNX")
@@ -268,15 +285,15 @@ model = TextEmbedding(model_name="n24q02m/Qwen3-Embedding-0.6B-ONNX", cuda=Devic
 
 #### GGUF
 
-GPU is handled by `llama-cpp-python`. The default `pip install qwen3-embed[gguf]` is CPU-only.
+GPU is handled by `llama-cpp-python`. The default `pip install fastretrieval[gguf]` is CPU-only.
 For CUDA GPU support, build with:
 
 ```bash
-CMAKE_ARGS="-DGGML_CUDA=on" pip install qwen3-embed[gguf]
+CMAKE_ARGS="-DGGML_CUDA=on" pip install fastretrieval[gguf]
 ```
 
 ```python
-from qwen3_embed import TextEmbedding, Device
+from fastretrieval import TextEmbedding, Device
 
 # Auto-detect GPU (default, offloads all layers)
 model = TextEmbedding(model_name="n24q02m/Qwen3-Embedding-0.6B-GGUF")
@@ -298,11 +315,46 @@ uv run pytest -m "not integration" --tb=short    # Unit tests only (CI default)
 # Shortcuts (optional, via mise): mise run setup / lint / test / fix
 ```
 
+## Migrating from qwen3-embed
+
+The library was previously published as `qwen3-embed`. New releases use the
+`fastretrieval` distribution and import package; Qwen3 model identifiers remain unchanged.
+
+### Package and import names
+
+```bash
+# Before
+pip install qwen3-embed[gguf]
+
+# After
+pip install fastretrieval[gguf]
+```
+
+```python
+# Before
+from qwen3_embed import TextEmbedding, TextCrossEncoder
+
+# After
+from fastretrieval import TextEmbedding, TextCrossEncoder
+```
+
+The public API is unchanged. The old environment variable names remain supported as
+deprecated compatibility aliases:
+
+| Old variable | New variable |
+|:-------------|:-------------|
+| `QWEN3_EMBED_CACHE_PATH` | `FASTRETRIEVAL_CACHE_PATH` |
+| `QWEN3_EMBED_MAX_INPUT_LENGTH` | `FASTRETRIEVAL_MAX_INPUT_LENGTH` |
+
+The old names still work and emit a `DeprecationWarning`; when both names are set, the
+`FASTRETRIEVAL_*` value wins. Existing `qwen3-embed` releases remain on PyPI and continue
+to receive security fixes while consumers migrate.
+
 ## Related Projects
 
-- [wet-mcp](https://github.com/n24q02m/wet-mcp) -- MCP web search server with vector-based docs search, uses qwen3-embed for local embedding
-- [mnemo-mcp](https://github.com/n24q02m/mnemo-mcp) -- MCP memory server with semantic search powered by qwen3-embed
-- [better-code-review-graph](https://github.com/n24q02m/better-code-review-graph) -- Knowledge graph for code reviews, uses qwen3-embed for local ONNX embedding
+- [wet-mcp](https://github.com/n24q02m/wet-mcp) -- MCP web search server with vector-based docs search, uses fastretrieval for local embedding
+- [mnemo-mcp](https://github.com/n24q02m/mnemo-mcp) -- MCP memory server with semantic search powered by fastretrieval
+- [better-code-review-graph](https://github.com/n24q02m/better-code-review-graph) -- Knowledge graph for code reviews, uses fastretrieval for local ONNX embedding
 - [modalcom-ai-workers](https://github.com/n24q02m/modalcom-ai-workers) -- GPU-serverless workers that convert Qwen3 models to ONNX/GGUF format
 
 ## Contributing

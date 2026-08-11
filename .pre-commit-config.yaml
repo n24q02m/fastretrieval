@@ -24,6 +24,18 @@ repos:
         exclude_types: [image]
 
   # ============================================================================
+  # Registry metadata: the sdist and wheel carry this repo's README to PyPI, so
+  # a manifest naming a file that is not there publishes an empty project page.
+  # ============================================================================
+  - repo: local
+    hooks:
+      - id: verify-readme-sync
+        name: Verify README registry metadata
+        entry: python scripts/repo-bootstrap/verify_readme_sync.py --repo-root=.
+        language: system
+        pass_filenames: false
+
+  # ============================================================================
   # Python
   # ============================================================================
   - repo: https://github.com/astral-sh/ruff-pre-commit

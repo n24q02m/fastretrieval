@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from qwen3_embed.export import export_to_onnx
+from fastretrieval.export import export_to_onnx
 
 _HAS_OPTIMUM = importlib.util.find_spec("optimum") is not None
 

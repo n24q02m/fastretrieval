@@ -4,15 +4,15 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from qwen3_embed.common.model_description import (
+from fastretrieval.common.model_description import (
     CustomDenseModelDescription,
     DenseModelDescription,
     PoolingType,
 )
-from qwen3_embed.common.onnx_model import OnnxOutputContext
-from qwen3_embed.common.types import NumpyArray
-from qwen3_embed.common.utils import last_token_pool, mean_pooling, normalize
-from qwen3_embed.text.onnx_embedding import OnnxTextEmbedding, OnnxTextEmbeddingWorker
+from fastretrieval.common.onnx_model import OnnxOutputContext
+from fastretrieval.common.types import NumpyArray
+from fastretrieval.common.utils import last_token_pool, mean_pooling, normalize
+from fastretrieval.text.onnx_embedding import OnnxTextEmbedding, OnnxTextEmbeddingWorker
 
 
 class CustomTextEmbedding(OnnxTextEmbedding):

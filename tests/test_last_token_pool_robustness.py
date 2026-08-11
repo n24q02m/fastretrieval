@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from qwen3_embed.common.utils import last_token_pool
+from fastretrieval.common.utils import last_token_pool
 
 
 def test_mixed_padding():

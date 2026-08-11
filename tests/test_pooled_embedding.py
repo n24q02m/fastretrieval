@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from qwen3_embed.common.onnx_model import OnnxOutputContext
-from qwen3_embed.text.pooled_embedding import PooledEmbedding
+from fastretrieval.common.onnx_model import OnnxOutputContext
+from fastretrieval.text.pooled_embedding import PooledEmbedding
 
 
 class MockPooledEmbedding(PooledEmbedding):

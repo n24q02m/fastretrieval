@@ -4,7 +4,7 @@ These tests download GGUF models from HuggingFace Hub and run real inference
 via llama-cpp-python.  Marked with ``pytest.mark.integration`` and auto-skipped
 when ``llama-cpp-python`` is not installed::
 
-    pip install qwen3-embed[gguf]    # install optional dependency
+    pip install fastretrieval[gguf]    # install optional dependency
     pytest -m integration             # run integration tests
 """
 
@@ -13,7 +13,7 @@ import pytest
 
 llama_cpp = pytest.importorskip("llama_cpp", reason="llama-cpp-python not installed")
 
-from qwen3_embed import TextCrossEncoder, TextEmbedding  # noqa: E402
+from fastretrieval import TextCrossEncoder, TextEmbedding  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fixtures

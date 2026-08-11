@@ -1,6 +1,6 @@
 import pytest
 
-from qwen3_embed.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
+from fastretrieval.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
 
 
 def test_init_unsupported_model_raises_value_error():
@@ -26,7 +26,7 @@ def test_list_supported_models():
 
 def test_list_supported_models_caching(monkeypatch):
     """Verify that _list_supported_models is cached."""
-    from qwen3_embed.rerank.cross_encoder.qwen3_cross_encoder import Qwen3CrossEncoder
+    from fastretrieval.rerank.cross_encoder.qwen3_cross_encoder import Qwen3CrossEncoder
 
     TextCrossEncoder._clear_model_cache()
 

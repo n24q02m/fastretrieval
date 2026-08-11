@@ -5,14 +5,14 @@ import inspect
 import numpy as np
 import pytest
 
-from qwen3_embed.common.onnx_model import OnnxOutputContext
-from qwen3_embed.text.qwen3_embedding import (
+from fastretrieval.common.onnx_model import OnnxOutputContext
+from fastretrieval.text.qwen3_embedding import (
     DEFAULT_TASK,
     QUERY_INSTRUCTION_TEMPLATE,
     Qwen3TextEmbedding,
     supported_qwen3_models,
 )
-from qwen3_embed.text.text_embedding import TextEmbedding
+from fastretrieval.text.text_embedding import TextEmbedding
 
 
 class TestQwen3TextEmbeddingRegistry:

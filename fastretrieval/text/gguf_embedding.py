@@ -3,7 +3,7 @@
 Runtime alternative to ONNX for Qwen3-Embedding. Uses llama-cpp-python for
 inference from GGUF quantized models (Q4_K_M).
 
-Requires optional dependency: pip install qwen3-embed[gguf]
+Requires optional dependency: pip install fastretrieval[gguf]
 """
 
 import itertools
@@ -13,10 +13,10 @@ from typing import Any
 
 import numpy as np
 
-from qwen3_embed.common.model_description import DenseModelDescription, ModelSource
-from qwen3_embed.common.types import Device, NumpyArray
-from qwen3_embed.common.utils import define_cache_dir
-from qwen3_embed.text.text_embedding_base import TextEmbeddingBase
+from fastretrieval.common.model_description import DenseModelDescription, ModelSource
+from fastretrieval.common.types import Device, NumpyArray
+from fastretrieval.common.utils import define_cache_dir
+from fastretrieval.text.text_embedding_base import TextEmbeddingBase
 
 # ---------------------------------------------------------------------------
 # Model registry
@@ -51,7 +51,7 @@ def _check_llama_cpp() -> None:
     except ImportError as e:
         msg = (
             "llama-cpp-python is required for GGUF models. "
-            "Install with: pip install qwen3-embed[gguf]"
+            "Install with: pip install fastretrieval[gguf]"
         )
         raise ImportError(msg) from e
 
@@ -68,7 +68,7 @@ class Qwen3TextEmbeddingGGUF(TextEmbeddingBase):
 
     Usage::
 
-        from qwen3_embed import TextEmbedding
+        from fastretrieval import TextEmbedding
 
         model = TextEmbedding("n24q02m/Qwen3-Embedding-0.6B-GGUF")
         embeddings = list(model.embed(["Hello world"]))

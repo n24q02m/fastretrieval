@@ -1,7 +1,7 @@
 """Tests for CustomTextCrossEncoder."""
 
-from qwen3_embed.common.model_description import BaseModelDescription, ModelSource
-from qwen3_embed.rerank.cross_encoder.custom_text_cross_encoder import CustomTextCrossEncoder
+from fastretrieval.common.model_description import BaseModelDescription, ModelSource
+from fastretrieval.rerank.cross_encoder.custom_text_cross_encoder import CustomTextCrossEncoder
 
 
 class TestCustomTextCrossEncoder:

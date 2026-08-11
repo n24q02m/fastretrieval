@@ -3,15 +3,15 @@ from typing import Any
 
 from loguru import logger
 
-from qwen3_embed.common.model_description import BaseModelDescription
-from qwen3_embed.common.onnx_model import OnnxOutputContext, OnnxSessionConfig
-from qwen3_embed.common.types import Device, OnnxProvider
-from qwen3_embed.common.utils import define_cache_dir
-from qwen3_embed.rerank.cross_encoder.onnx_text_model import (
+from fastretrieval.common.model_description import BaseModelDescription
+from fastretrieval.common.onnx_model import OnnxOutputContext, OnnxSessionConfig
+from fastretrieval.common.types import Device, OnnxProvider
+from fastretrieval.common.utils import define_cache_dir
+from fastretrieval.rerank.cross_encoder.onnx_text_model import (
     OnnxCrossEncoderModel,
     TextRerankerWorker,
 )
-from qwen3_embed.rerank.cross_encoder.text_cross_encoder_base import TextCrossEncoderBase
+from fastretrieval.rerank.cross_encoder.text_cross_encoder_base import TextCrossEncoderBase
 
 # Base class model list kept empty — Qwen3 reranker is registered
 # in qwen3_cross_encoder.py. Custom models can be added at runtime
@@ -46,8 +46,8 @@ class OnnxTextCrossEncoder(TextCrossEncoderBase, OnnxCrossEncoderModel):
         Args:
             model_name (str): The name of the model to use.
             cache_dir (str, optional): The path to the cache directory.
-                                       Can be set using the `qwen3_embed_CACHE_PATH` env variable.
-                                       Defaults to `qwen3_embed_cache` in the system's temp directory.
+                                       Can be set using the `FASTRETRIEVAL_CACHE_PATH` env variable.
+                                       Defaults to `fastretrieval` in the user's cache directory.
             threads (int, optional): The number of threads single onnxruntime session can use. Defaults to None.
             providers (Optional[Sequence[OnnxProvider]], optional): The list of onnxruntime providers to use.
                 Mutually exclusive with the `cuda` and `device_ids` arguments. Defaults to None.

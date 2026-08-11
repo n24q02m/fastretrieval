@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from qwen3_embed.common.types import Device, NumpyArray, OnnxProvider, PathInput
+from fastretrieval.common.types import Device, NumpyArray, OnnxProvider, PathInput
 
 
 def test_device_enum() -> None:

@@ -15,11 +15,11 @@ Key differences from standard text embedding models:
 from collections.abc import Iterable
 from typing import Any
 
-from qwen3_embed.common.model_description import DenseModelDescription, ModelSource
-from qwen3_embed.common.onnx_model import OnnxOutputContext
-from qwen3_embed.common.types import NumpyArray
-from qwen3_embed.common.utils import last_token_pool, normalize
-from qwen3_embed.text.onnx_embedding import OnnxTextEmbedding, OnnxTextEmbeddingWorker
+from fastretrieval.common.model_description import DenseModelDescription, ModelSource
+from fastretrieval.common.onnx_model import OnnxOutputContext
+from fastretrieval.common.types import NumpyArray
+from fastretrieval.common.utils import last_token_pool, normalize
+from fastretrieval.text.onnx_embedding import OnnxTextEmbedding, OnnxTextEmbeddingWorker
 
 # ---------------------------------------------------------------------------
 # Model registry
@@ -68,7 +68,7 @@ class Qwen3TextEmbedding(OnnxTextEmbedding):
 
     Usage::
 
-        from qwen3_embed import TextEmbedding
+        from fastretrieval import TextEmbedding
 
         model = TextEmbedding("n24q02m/Qwen3-Embedding-0.6B-ONNX")
         embeddings = list(model.embed(["Hello world"]))

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from tokenizers import Tokenizer, models
 
-from qwen3_embed.common.preprocessor_utils import load_special_tokens, load_tokenizer
+from fastretrieval.common.preprocessor_utils import load_special_tokens, load_tokenizer
 
 
 @pytest.fixture

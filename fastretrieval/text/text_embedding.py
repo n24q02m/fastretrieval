@@ -2,19 +2,19 @@ from collections.abc import Iterable, Sequence
 from dataclasses import asdict
 from typing import Any
 
-from qwen3_embed.common.model_description import (
+from fastretrieval.common.model_description import (
     CustomDenseModelDescription,
     DenseModelDescription,
     PoolingType,
 )
-from qwen3_embed.common.types import Device, NumpyArray, OnnxProvider
-from qwen3_embed.text.custom_text_embedding import CustomTextEmbedding
-from qwen3_embed.text.gguf_embedding import Qwen3TextEmbeddingGGUF
-from qwen3_embed.text.onnx_embedding import OnnxTextEmbedding
-from qwen3_embed.text.pooled_embedding import PooledEmbedding
-from qwen3_embed.text.pooled_normalized_embedding import PooledNormalizedEmbedding
-from qwen3_embed.text.qwen3_embedding import Qwen3TextEmbedding
-from qwen3_embed.text.text_embedding_base import TextEmbeddingBase
+from fastretrieval.common.types import Device, NumpyArray, OnnxProvider
+from fastretrieval.text.custom_text_embedding import CustomTextEmbedding
+from fastretrieval.text.gguf_embedding import Qwen3TextEmbeddingGGUF
+from fastretrieval.text.onnx_embedding import OnnxTextEmbedding
+from fastretrieval.text.pooled_embedding import PooledEmbedding
+from fastretrieval.text.pooled_normalized_embedding import PooledNormalizedEmbedding
+from fastretrieval.text.qwen3_embedding import Qwen3TextEmbedding
+from fastretrieval.text.text_embedding_base import TextEmbeddingBase
 
 
 class TextEmbedding(TextEmbeddingBase):
@@ -201,7 +201,7 @@ class TextEmbedding(TextEmbeddingBase):
         Returns:
             List of embeddings, one per document
         """
-        from qwen3_embed.common.utils import check_input_length, iter_checked_texts
+        from fastretrieval.common.utils import check_input_length, iter_checked_texts
 
         if isinstance(documents, str):
             check_input_length(documents)
@@ -221,7 +221,7 @@ class TextEmbedding(TextEmbeddingBase):
         Returns:
             Iterable[NumpyArray]: The embeddings.
         """
-        from qwen3_embed.common.utils import check_input_length, iter_checked_texts
+        from fastretrieval.common.utils import check_input_length, iter_checked_texts
 
         if isinstance(query, str):
             check_input_length(query)
@@ -244,7 +244,7 @@ class TextEmbedding(TextEmbeddingBase):
             Iterable[NumpyArray]: The passage embeddings, one per text.
         """
         # This is model-specific, so that different models can have specialized implementations
-        from qwen3_embed.common.utils import iter_checked_texts
+        from fastretrieval.common.utils import iter_checked_texts
 
         yield from self.model.passage_embed(iter_checked_texts(texts), **kwargs)
 
