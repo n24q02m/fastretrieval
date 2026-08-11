@@ -49,6 +49,24 @@ def test_custom_reranker_import_registry_is_idempotent():
         _clear()
 
 
+def test_custom_reranker_registration_invalidates_facade_cache():
+    from qwen3_embed.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
+
+    _clear()
+    TextCrossEncoder._clear_model_cache()
+    TextCrossEncoder.list_supported_models()
+    model_id = "Org/Cache-Invalidation"
+    CustomTextCrossEncoder.add_model(
+        BaseModelDescription(model=model_id, sources=ModelSource(hf=model_id))
+    )
+    try:
+        models = [model["model"] for model in TextCrossEncoder.list_supported_models()]
+        assert model_id in models
+    finally:
+        _clear()
+        TextCrossEncoder._clear_model_cache()
+
+
 def test_custom_reranker_extra_worker_params_carries_registry():
     _clear()
     CustomTextCrossEncoder.add_model(

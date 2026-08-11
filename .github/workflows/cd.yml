@@ -1,3 +1,11 @@
+# =============================================================================
+# CD Template: Python. Publish steps are opt-in per repo via
+# vars.PUBLISH_PYPI / vars.PUBLISH_DOCKER / vars.PUBLISH_MCP_REGISTRY.
+# Source: https://github.com/n24q02m/.github/templates/cd/public-python.yml
+#
+# Pipeline: PSR v10 -> PyPI -> Docker multi-arch (amd64+arm64) -> MCP Registry
+# CUSTOMIZE: Search for "# CUSTOMIZE:" comments and adjust for your repo.
+# =============================================================================
 name: CD
 
 on:
@@ -13,7 +21,12 @@ on:
 
 permissions:
   contents: write
+  packages: write
   id-token: write
+
+env:
+  DOCKERHUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/fastretrieval
+  GHCR_IMAGE: ghcr.io/${{ github.repository }}
 
 concurrency:
   group: release
@@ -21,7 +34,24 @@ concurrency:
 
 jobs:
   # ============================================================================
-  # Release: PSR phân tích commits → bump version → CHANGELOG → tag → Release
+  # README registry metadata: the package carries the repo's README to PyPI, so
+  # a manifest that names a file which is not there publishes an empty project
+  # page. Runs before the release rather than beside it -- a PyPI upload cannot
+  # be undone, only yanked.
+  # ============================================================================
+  readme-sync:
+    name: Verify README registry metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+      - name: Verify README registry metadata
+        run: python scripts/repo-bootstrap/verify_readme_sync.py --repo-root=.
+
+  # ============================================================================
+  # Release: PSR v10
   # ============================================================================
   release:
     name: Semantic Release
@@ -33,7 +63,7 @@ jobs:
       is_prerelease: ${{ steps.release.outputs.is_prerelease }}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
 
@@ -49,76 +79,8 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
-      # Dry-run PSR (no_operation_mode => --noop: no commit/tag/push/release) purely to
-      # learn the version it WOULD publish, so the PyPI-collision guard below can fire
-      # BEFORE the real run creates a git tag or GitHub Release. Same action + SHA and
-      # same prerelease inputs as the real step, run against the same untouched checkout.
-      - uses: n24q02m/better-semantic-release@9b8ee6275b7dae995bac090282ccb1cabc99ae0f # v1.2.3
-        id: dryrun
-        with:
-          github_token: ${{ steps.app-token.outputs.token }}
-          prerelease: ${{ inputs.release_type == 'beta' }}
-          prerelease_token: beta
-          no_operation_mode: true
-
-      # PSR silently no-ops when it can't find a fix:/feat: commit since the last
-      # tag -- e.g. a bot PR squash-merged with a non-conventional subject (the
-      # commit-title no-bump trap the pr-title CI check guards at merge time; this
-      # step is the release-time backstop for anything that slipped past it, or a
-      # repo predating that check). released=false alone is not an error (it is
-      # the normal outcome of a docs-only/chore-only window), so this only warns.
-      - name: Warn if commits exist since last tag but PSR computed no release
-        if: steps.dryrun.outputs.released != 'true'
-        run: |
-          set -uo pipefail
-          highest_tag="$(git tag -l 'v*' | sort -V | tail -1)"
-          if [ -z "$highest_tag" ]; then
-            echo "No existing tags -- nothing to compare."
-            exit 0
-          fi
-          commit_count="$(git rev-list "${highest_tag}..HEAD" --count)"
-          if [ "$commit_count" -gt 0 ]; then
-            echo "::warning::PSR computed no release (released=false) but ${commit_count} commit(s) exist since ${highest_tag}. This is expected if they are all chore/docs-only, but if one of them should have bumped the version (e.g. a bot-authored fix squashed with a non-conventional subject), inspect 'git log ${highest_tag}..HEAD --oneline' before assuming there is nothing to release."
-          else
-            echo "OK: no commits since ${highest_tag} -- released=false is expected."
-          fi
-
-      # PyPI never allows reusing a version number. Fail early and loudly if the version
-      # PSR intends to publish already exists, before any tag or Release is created --
-      # this turns a silent release freeze (PSR sees a matching tag, sets released=false,
-      # every publish job is skipped) or an opaque upload failure deep in `uv publish`
-      # into one explicit, actionable error.
-      - name: Guard against re-publishing an already-published PyPI version
-        if: steps.dryrun.outputs.released == 'true'
-        env:
-          COMPUTED_VERSION: ${{ steps.dryrun.outputs.version }}
-        run: |
-          set -uo pipefail
-          PKG='qwen3-embed'
-          URL="https://pypi.org/pypi/${PKG}/${COMPUTED_VERSION}/json"
-          echo "Checking PyPI for ${PKG} ${COMPUTED_VERSION} before semantic-release tags anything..."
-
-          # PyPI normalizes the version in the URL path (e.g. 1.2.3-beta.1 and 1.2.3b1
-          # both resolve to the same release), so PSR's raw version output can be used
-          # directly in the URL.
-          #   200            -> exists         -> COLLISION
-          #   404             -> not found      -> FREE
-          #   anything else  -> network/registry error -> UNKNOWN, never treated as free
-          http_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$URL")
-
-          if [ "$http_code" = "200" ]; then
-            echo "::error::Computed release version ${COMPUTED_VERSION} already exists on PyPI as ${PKG}==${COMPUTED_VERSION}. PyPI NEVER allows re-publishing a version number, even one later yanked. This almost always means the git history diverged from what was actually published to PyPI. Do NOT retry the same version: bump PAST the already-published range (higher than any version ever published) and dispatch the release again."
-            exit 1
-          fi
-
-          if [ "$http_code" = "404" ]; then
-            echo "OK: ${PKG}==${COMPUTED_VERSION} is not on PyPI (404) -- safe to publish."
-            exit 0
-          fi
-
-          echo "::error::Could not verify whether ${PKG}==${COMPUTED_VERSION} exists on PyPI: unexpected HTTP status ${http_code} from ${URL} (likely a transient network/registry error, rate limit, or outage). Refusing to proceed so a genuine collision cannot slip through as a false 'free'. Re-run the release once the registry is reachable."
-          exit 1
-
+      # Version bump runs on the fork (orphan-tag + registry-collision guards).
+      # The publish step below stays upstream — the fork does not replace it.
       - uses: n24q02m/better-semantic-release@9b8ee6275b7dae995bac090282ccb1cabc99ae0f # v1.2.3
         id: release
         with:
@@ -133,39 +95,38 @@ jobs:
           tag: ${{ steps.release.outputs.tag }}
 
   # ============================================================================
-  # Publish: Build & upload to PyPI
+  # Notify Downstream
   # ============================================================================
-  publish-pypi:
-    name: Publish to PyPI
-    needs: release
-    if: needs.release.outputs.released == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.release.outputs.tag }}
-
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-
-      - run: uv build
-
-      - name: Publish to PyPI
-        run: uv publish
-
-  # =================== Notify Downstream ===================
+  # A core/shared repo cutting a stable release has to open a tracking issue in
+  # every repo that pins it, or downstream pins drift silently. The dispatch goes
+  # to one hub repo that fans the issues out; `n24q02m/n24q02m` is that hub as a
+  # literal, copied from the repo this template was measured against rather than
+  # derived from `n24q02m` -- the hub happening to share the owner's name is not
+  # a rule this template gets to assume.
+  #
+  # Stable only: `is_prerelease != 'true'`. A beta cutting downstream issues would
+  # file the same issue again at stable.
+  #
+  # NOTIFY_DOWNSTREAM, because that rule binds CORE repos and this template lands
+  # on every Python repo. Ungated, a non-core repo in this stack would dispatch
+  # `core-update` on a stable release with client_payload[core] naming itself.
+  # Two measurements say that is latent rather than visible: the hub repo has
+  # exactly one workflow (opencode.yml) and no `repository_dispatch` trigger
+  # anywhere, so nothing handles `core-update` today; and the job this was
+  # copied from is `skipped` in 10 of its 10 recorded CD runs. A job that has
+  # never once executed is not evidence that it is safe to fan out -- it is a
+  # wrong fan-out waiting for the day a handler is added.
   notify-downstream:
     name: Notify Downstream
-    needs: [release, publish-pypi]
-    if: needs.release.outputs.released == 'true' && needs.release.outputs.is_prerelease != 'true'
+    needs: [release]
+    if: >-
+      needs.release.outputs.released == 'true'
+      && needs.release.outputs.is_prerelease != 'true'
+      && vars.NOTIFY_DOWNSTREAM == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
 
@@ -175,8 +136,6 @@ jobs:
         with:
           app-id: ${{ vars.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_KEY }}
-          owner: n24q02m
-          repositories: n24q02m
 
       - name: Dispatch core-update
         env:
@@ -184,70 +143,199 @@ jobs:
         run: |
           gh api repos/n24q02m/n24q02m/dispatches \
             -f event_type=core-update \
-            -f 'client_payload[core]=qwen3-embed' \
+            -f 'client_payload[core]=fastretrieval' \
             -f 'client_payload[version]=${{ needs.release.outputs.version }}' \
             -f 'client_payload[tag]=${{ needs.release.outputs.tag }}' \
             -f 'client_payload[release_url]=https://github.com/${{ github.repository }}/releases/tag/${{ needs.release.outputs.tag }}'
 
-  # =================== Create downstream bump issues ===================
-  create-downstream-issues:
-    name: Create downstream bump issues
-    needs: [release, publish-pypi]
-    if: needs.release.outputs.released == 'true' && needs.release.outputs.is_prerelease != 'true'
+  # ============================================================================
+  # Publish to PyPI
+  # ============================================================================
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [readme-sync, release]
+    if: needs.release.outputs.released == 'true' && vars.PUBLISH_PYPI == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
         with:
           egress-policy: audit
 
-      - name: Generate GitHub App Token
-        id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          app-id: ${{ vars.CI_APP_ID }}
-          private-key: ${{ secrets.CI_APP_KEY }}
-          owner: n24q02m
-          repositories: wet-mcp,mnemo-mcp,better-code-review-graph
-
-      - name: Create issues in downstream repos
+          ref: ${{ needs.release.outputs.tag }}
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - run: uv build
+      - name: Publish to PyPI
+        run: uv publish
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+
+  # ============================================================================
+  # Build Docker (multi-arch: amd64 + arm64)
+  # ============================================================================
+  build-docker:
+    name: Build Docker (${{ matrix.platform }})
+    # readme-sync, because this job pushes an image to a registry and
+    # merge-docker then publishes ./README.md as the Docker Hub description.
+    # The gate is only a gate if it runs BEFORE the push.
+    needs: [readme-sync, release]
+    if: needs.release.outputs.released == 'true' && vars.PUBLISH_DOCKER == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            artifact: linux-amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            artifact: linux-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        id: build
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,"name=${{ env.DOCKERHUB_IMAGE }},${{ env.GHCR_IMAGE }}",push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ github.ref_name }}-${{ matrix.artifact }}
+          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-${{ matrix.artifact }}
+      - run: |
+          mkdir -p ${{ runner.temp }}/digests
+          echo "${{ steps.build.outputs.digest }}" > "${{ runner.temp }}/digests/${{ matrix.artifact }}"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: digest-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/digests/*
+          retention-days: 1
+
+  # ============================================================================
+  # Merge Docker Manifests
+  # ============================================================================
+  merge-docker:
+    name: Merge Docker Manifests
+    needs: [release, build-docker]
+    if: needs.release.outputs.released == 'true' && vars.PUBLISH_DOCKER == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: digest-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create and push manifests
+        env:
           VERSION: ${{ needs.release.outputs.version }}
-          TAG: ${{ needs.release.outputs.tag }}
+          IS_PRERELEASE: ${{ needs.release.outputs.is_prerelease }}
         run: |
-          set -euo pipefail
-          DOWNSTREAM="wet-mcp mnemo-mcp better-code-review-graph"
-          PKG_NAME="qwen3-embed"
-          CHANGELOG_URL="https://github.com/n24q02m/qwen3-embed/releases/tag/${TAG}"
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            TAGS="beta ${VERSION}"
+          else
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+            TAGS="latest ${VERSION} ${MINOR} ${MAJOR}"
+          fi
 
-          for repo in $DOWNSTREAM; do
-            title="chore: bump ${PKG_NAME} to ${VERSION}"
-            body=$(cat <<EOF
-          qwen3-embed released stable **${TAG}**.
+          DIGESTS=$(cat ${{ runner.temp }}/digests/*)
 
-          **Changelog:** ${CHANGELOG_URL}
-
-          ## Action required
-
-          Bump the \`${PKG_NAME}\` pin in \`pyproject.toml\` and regenerate lockfile:
-
-          \`\`\`bash
-          uv lock --upgrade-package ${PKG_NAME}
-          \`\`\`
-
-          Then open a PR with title \`fix: bump qwen3-embed to ${VERSION}\`.
-
-          _Auto-created by qwen3-embed CD. See \`feedback_core_release_auto_issue.md\`._
-          EOF
-          )
-
-            existing=$(gh issue list -R "n24q02m/${repo}" --search "in:title \"bump ${PKG_NAME} to ${VERSION}\"" --state all --json number --jq '.[0].number // ""')
-            if [ -n "$existing" ]; then
-              echo "::notice::Issue already exists in ${repo}: #${existing}"
-              continue
-            fi
-            gh issue create -R "n24q02m/${repo}" --title "$title" --body "$body" --label "dependencies" || \
-              gh issue create -R "n24q02m/${repo}" --title "$title" --body "$body" || \
-              echo "::warning::Failed to create issue in $repo"
+          for IMAGE in "$DOCKERHUB_IMAGE" "$GHCR_IMAGE"; do
+            TAG_ARGS=""
+            for TAG in $TAGS; do
+              TAG_ARGS="$TAG_ARGS -t ${IMAGE}:${TAG}"
+            done
+            docker buildx imagetools create $TAG_ARGS \
+              $(echo "$DIGESTS" | xargs -I{} echo "${IMAGE}@{}")
           done
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: README.md
+      - uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          # CUSTOMIZE: DockerHub repository name
+          repository: ${{ env.DOCKERHUB_IMAGE }}
+          short-description: ${{ github.event.repository.description }}
+          readme-filepath: ./README.md
+
+  # ============================================================================
+  # Publish to MCP Registry (stable only)
+  # ============================================================================
+  publish-mcp-registry:
+    name: Publish to MCP Registry
+    needs: [release, publish-pypi, merge-docker]
+    if: >-
+      needs.release.outputs.released == 'true'
+      && needs.release.outputs.is_prerelease != 'true'
+      && vars.PUBLISH_PYPI == 'true'
+      && vars.PUBLISH_DOCKER == 'true'
+      && vars.PUBLISH_MCP_REGISTRY == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - name: Update server.json version
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          jq --arg v "$VERSION" '
+            .version = $v |
+            .packages = [.packages[] |
+              if .registryType == "oci" then del(.version)
+              else .version = $v
+              end
+            ]
+          ' server.json > server.json.tmp && mv server.json.tmp server.json
+
+      - name: Install MCP Publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Login to MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to MCP Registry
+        run: ./mcp-publisher publish

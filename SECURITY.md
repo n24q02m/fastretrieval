@@ -1,24 +1,15 @@
 # Security Policy
 
-## Supported Versions
-
-| Version | Supported |
-|---------|-----------|
-| latest  | Yes       |
-| < latest | No       |
-
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it responsibly:
+Report privately through GitHub: open the repository's **Security** tab and choose
+**Report a vulnerability**. The report stays visible only to the maintainers until a
+fix ships.
 
-1. **Do NOT** open a public issue
-2. Email **quangminh2402.dev@gmail.com** with details
-3. Include steps to reproduce if possible
-4. Allow reasonable time for a fix before disclosure
+Direct link: <https://github.com/n24q02m/fastretrieval/security/advisories/new>
 
-## Security Measures
+Please do not open a public issue for a security vulnerability.
 
-- Dependencies are regularly updated via Renovate
-- All code changes require review before merging
-- CodeQL analysis runs on every push
-- No secrets are hardcoded in the repository
+If the link above returns a 404, private vulnerability reporting is not enabled yet on
+this repository; open an issue asking for it to be turned on, without describing the
+vulnerability.

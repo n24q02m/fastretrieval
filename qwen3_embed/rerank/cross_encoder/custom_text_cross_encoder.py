@@ -19,6 +19,9 @@ class CustomTextCrossEncoder(OnnxTextCrossEncoder):
     ) -> None:
         cls._clear_model_cache()
         cls.SUPPORTED_MODELS.append(model_description)
+        from qwen3_embed.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
+
+        TextCrossEncoder._clear_model_cache()
 
     @classmethod
     def _export_registry(cls) -> list[BaseModelDescription]:

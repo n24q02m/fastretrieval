@@ -86,6 +86,7 @@ call-non-callable = "warn"
 
 [tool.ruff]
 line-length = 99
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
