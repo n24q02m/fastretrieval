@@ -9,6 +9,7 @@ def test_public_api_is_importable_under_new_name():
         "CustomRerankerSpec",
         "Device",
         "ImageEmbedding",
+        "LateInteractionTextEmbedding",
         "SparseEmbedding",
         "SparseTextEmbedding",
         "TextEmbedding",
