@@ -10,6 +10,7 @@ def test_public_api_is_importable_under_new_name():
         "Device",
         "ImageEmbedding",
         "LateInteractionTextEmbedding",
+        "LateInteractionMultimodalEmbedding",
         "SparseEmbedding",
         "SparseTextEmbedding",
         "TextEmbedding",

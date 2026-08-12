@@ -3,6 +3,7 @@ import importlib.metadata
 from fastretrieval.common.custom_model import CustomModelSpec, CustomRerankerSpec
 from fastretrieval.common.types import Device
 from fastretrieval.models.late_interaction import LateInteractionTextEmbedding
+from fastretrieval.models.late_interaction_multimodal import LateInteractionMultimodalEmbedding
 from fastretrieval.models.sparse import SparseEmbedding, SparseTextEmbedding
 from fastretrieval.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
 from fastretrieval.text import TextEmbedding
@@ -19,6 +20,7 @@ __all__ = [
     "Device",
     "ImageEmbedding",
     "LateInteractionTextEmbedding",
+    "LateInteractionMultimodalEmbedding",
     "SparseEmbedding",
     "SparseTextEmbedding",
     "TextEmbedding",
