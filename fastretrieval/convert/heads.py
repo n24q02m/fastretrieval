@@ -1,4 +1,4 @@
-"""Export small task-specific heads for converted causal models."""
+"""Reduce causal-LM rerankers to two yes/no logits."""
 
 from __future__ import annotations
 
@@ -48,75 +48,56 @@ def export_yes_no_head(
     require_convert_deps("torch", "transformers")
 
     import torch
+    from torch import nn
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     output_dir = Path(out_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    onnx_dir = output_dir / "onnx"
+    onnx_dir.mkdir(parents=True, exist_ok=True)
 
     tokenizer = AutoTokenizer.from_pretrained(source)
     yes_id, no_id = resolve_yes_no_ids(tokenizer, yes_token, no_token)
+    logger.info("yes token id {}, no token id {}", yes_id, no_id)
     model = AutoModelForCausalLM.from_pretrained(
         source,
         torch_dtype=torch.float32,
         low_cpu_mem_usage=True,
         device_map="cpu",
     )
+    model.config.use_cache = False
     model.eval()
 
-    hidden_size = getattr(model.config, "hidden_size", None)
-    if not isinstance(hidden_size, int) or hidden_size <= 0:
-        raise ValueError("causal model config must expose a positive hidden_size")
-
-    class YesNoHead(torch.nn.Module):
-        def __init__(self, base_model: Any, yes_token_id: int, no_token_id: int) -> None:
+    class _YesNoHead(nn.Module):
+        def __init__(self, inner: Any) -> None:
             super().__init__()
-            self.base_model = base_model
-            self.yes_token_id = yes_token_id
-            self.no_token_id = no_token_id
+            self.body = inner.model
+            weight = inner.lm_head.weight.data
+            self.head = nn.Linear(weight.shape[1], 2, bias=False)
+            self.head.weight.data = weight[[no_id, yes_id], :]
 
-        def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
-            outputs = self.base_model(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                use_cache=False,
-            )
-            hidden = outputs.last_hidden_state[:, -1, :]
-            weight = self.base_model.get_output_embeddings().weight
-            selected = weight[
-                torch.tensor(
-                    [self.no_token_id, self.yes_token_id],
-                    device=weight.device,
-                ),
-                :,
-            ]
-            return torch.matmul(hidden, selected.transpose(0, 1))
+        def forward(self, input_ids: Any, attention_mask: Any) -> Any:
+            out = self.body(input_ids=input_ids, attention_mask=attention_mask)
+            return self.head(out.last_hidden_state[:, -1, :])
 
-    head = YesNoHead(model, yes_id, no_id)
-    encoded = tokenizer(
-        "hello world",
-        return_tensors="pt",
-        padding=False,
-        truncation=True,
-    )
-    input_ids = encoded["input_ids"]
-    attention_mask = encoded["attention_mask"]
-    onnx_path = output_dir / "yes_no_head.onnx"
+    wrapper = _YesNoHead(model).eval()
+    dummy = tokenizer("hello world", return_tensors="pt")
+    onnx_path = onnx_dir / "model.onnx"
     with torch.no_grad():
         torch.onnx.export(
-            head,
-            (input_ids, attention_mask),
-            onnx_path,
+            wrapper,
+            (dummy["input_ids"], dummy["attention_mask"]),
+            str(onnx_path),
             input_names=["input_ids", "attention_mask"],
             output_names=["logits"],
             dynamic_axes={
-                "input_ids": {0: "batch", 1: "sequence"},
-                "attention_mask": {0: "batch", 1: "sequence"},
-                "logits": {0: "batch"},
+                "input_ids": {0: "batch_size", 1: "sequence_length"},
+                "attention_mask": {0: "batch_size", 1: "sequence_length"},
+                "logits": {0: "batch_size"},
             },
             opset_version=21,
+            do_constant_folding=True,
         )
 
-    tokenizer.save_pretrained(output_dir)
-    model.config.save_pretrained(output_dir)
-    logger.info("Exported yes/no head to {}", onnx_path)
+    tokenizer.save_pretrained(str(output_dir))
+    model.config.save_pretrained(str(output_dir))
     return onnx_path
