@@ -157,7 +157,7 @@ Conventional Commits: `type(scope): message`. Automated semantic release via PSR
 
 The optional conversion stack lives in `fastretrieval/convert/requirements.txt` and is
 not part of the runtime lock. Run it with `uv run --with-requirements ...`; do not add
-PyTorch, Optimum, or Transformers to the runtime dependencies just to make conversion
+PyTorch, Optimum ONNX, or Transformers to the runtime dependencies just to make conversion
 convenient. The ONNX path requires explicit pooling and normalization metadata, writes
 the versioned contract manifest, validates every exported variant with ONNX Runtime,
 and only then promotes the artifact directory. `python -m fastretrieval.convert verify`

@@ -7,13 +7,16 @@ import pytest
 
 from fastretrieval.export import export_to_onnx
 
-_HAS_OPTIMUM = importlib.util.find_spec("optimum") is not None
+_HAS_OPTIMUM_ONNX = (
+    importlib.util.find_spec("optimum") is not None
+    and importlib.util.find_spec("optimum.exporters.onnx") is not None
+)
 
 
 def test_export_without_extra_raises_helpful_error(tmp_path):
     with (
         patch.dict("sys.modules", {"optimum": None}),
-        pytest.raises(ImportError, match=r"optimum\[exporters\]"),
+        pytest.raises(ImportError, match=r"optimum-onnx\[onnxruntime\]"),
     ):
         export_to_onnx("sentence-transformers/all-MiniLM-L6-v2", str(tmp_path))
 
@@ -47,7 +50,7 @@ def test_export_mocked(tmp_path):
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not _HAS_OPTIMUM, reason="requires the [export] extra")
+@pytest.mark.skipif(not _HAS_OPTIMUM_ONNX, reason="requires optimum-onnx")
 def test_export_minilm_roundtrip(tmp_path):
     import onnxruntime as ort  # noqa: F401
 

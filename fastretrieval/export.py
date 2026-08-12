@@ -1,20 +1,20 @@
 """Optional HuggingFace-id to ONNX export.
 
 The runtime package stays onnxruntime-only; the heavy export dependencies
-(torch, transformers, optimum) are imported lazily so importing this module does
+    (torch, transformers, optimum-onnx) are imported lazily so importing this module does
 not pull them in. They are NOT declared as an optional extra because the lib pins
 ``tokenizers``/``huggingface-hub`` versions that current ``transformers`` releases
 cannot co-resolve (see pyproject #691) — installing them as an extra would make
 the universal lock unsatisfiable. Install them yourself in a throwaway env::
 
-    pip install "optimum[exporters]" torch transformers onnx
+    pip install "optimum-onnx[onnxruntime]" torch transformers onnx
 """
 
 from pathlib import Path
 
 _MISSING_EXPORT_DEPS = (
-    "ONNX export needs optimum + torch + transformers. Install them in a separate "
-    'env: pip install "optimum[exporters]" torch transformers onnx'
+    "ONNX export needs optimum-onnx + torch + transformers. Install them in a separate "
+    'env: pip install "optimum-onnx[onnxruntime]" torch transformers onnx'
 )
 
 

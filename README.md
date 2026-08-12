@@ -236,7 +236,7 @@ PyTorch-only models can be converted first (in a throwaway env, since the export
 deps don't co-resolve with the lean runtime pins):
 
 ```python
-# pip install "optimum[exporters]" torch transformers onnx
+# pip install "optimum-onnx[onnxruntime]" torch transformers onnx
 from fastretrieval.export import export_to_onnx
 
 export_to_onnx("intfloat/multilingual-e5-base", "./e5-onnx")
@@ -249,7 +249,7 @@ family in the support matrix and it produces an artifact with a declarative
 contract manifest. Unsupported architectures fail closed instead of producing a
 misleading artifact.
 
-The conversion dependencies (`torch`, `transformers`, and `optimum`) are
+The conversion dependencies (`torch`, `transformers`, and `optimum-onnx`) are
 deliberately not runtime dependencies. Run conversion in a throwaway environment:
 
 ```bash
