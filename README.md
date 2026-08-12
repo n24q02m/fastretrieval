@@ -53,8 +53,21 @@ share the same runtime, and supports Matryoshka (MRL) truncation, instruction-aw
 and optional GPU acceleration. It is derived from [fastembed](https://github.com/qdrant/fastembed)
 and keeps Qwen3 model names as model identifiers rather than as the package boundary.
 
+## What it does
+
+| Task | Class | Extra needed |
+|---|---|---|
+| Dense text embedding | `TextEmbedding` | none |
+| Sparse embedding (SPLADE) | `SparseTextEmbedding` | none |
+| Late interaction (ColBERT) | `LateInteractionTextEmbedding` | none |
+| Image embedding | `ImageEmbedding` | `image` |
+| Late interaction multimodal (ColPali) | `LateInteractionMultimodalEmbedding` | `image` |
+| Cross-encoder rerank | `TextCrossEncoder` | none |
+| Generative rerank (yes/no logit) | `TextCrossEncoder` with a YesNo model | none |
+
 ## Table of contents
 
+- [What it does](#what-it-does)
 - [Features](#features)
 - [Supported Models](#supported-models)
 - [Installation](#installation)
@@ -109,7 +122,9 @@ registered through the declarative model contract.
 ## Installation
 
 ```bash
-pip install fastretrieval
+pip install fastretrieval            # text only
+pip install "fastretrieval[image]"   # adds image and ColPali
+pip install "fastretrieval[all]"     # adds GGUF backend too
 
 # For GGUF support
 pip install fastretrieval[gguf]

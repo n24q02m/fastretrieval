@@ -5,7 +5,10 @@ Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a d
 ## Package Identity
 
 - Distribution: `fastretrieval`; import package: `fastretrieval`.
-- Install the runtime with `pip install fastretrieval`; add `[gguf]` for GGUF support.
+- Install the text-only runtime with `pip install fastretrieval`.
+- Install image and ColPali support with `pip install "fastretrieval[image]"`.
+- Install the full optional runtime with `pip install "fastretrieval[all]"`; it includes the
+  GGUF backend. `pip install fastretrieval[gguf]` installs only the GGUF backend.
 - New environment variables: `FASTRETRIEVAL_CACHE_PATH` and `FASTRETRIEVAL_MAX_INPUT_LENGTH`.
 - Deprecated compatibility aliases: `QWEN3_EMBED_CACHE_PATH` and `QWEN3_EMBED_MAX_INPUT_LENGTH`.
   The new names win when both are set; old names remain readable and emit `DeprecationWarning`.
@@ -119,7 +122,9 @@ from fastretrieval.common.types import PathInput, Device
 
 ```
 fastretrieval/                    # Main package (not src layout)
-  __init__.py                     # Public API: TextEmbedding, TextCrossEncoder
+  __init__.py                     # Public API: TextEmbedding, SparseTextEmbedding,
+                                  # LateInteractionTextEmbedding, ImageEmbedding,
+                                  # LateInteractionMultimodalEmbedding, TextCrossEncoder
   py.typed                        # PEP 561 marker
   parallel_processor.py           # Multiprocessing worker pool
   common/                         # Shared utilities
@@ -131,8 +136,13 @@ fastretrieval/                    # Main package (not src layout)
   text/                           # Embedding module
     text_embedding.py             # Public facade
     onnx_embedding.py, qwen3_embedding.py, gguf_embedding.py, ...
+  models/                         # Retrieval modalities beyond dense text
+    sparse/                        # SPLADE facade: SparseTextEmbedding
+    late_interaction/              # ColBERT facade: LateInteractionTextEmbedding
+    image/                         # ImageEmbedding (requires the image extra)
+    late_interaction_multimodal/   # ColPali facade (requires the image extra)
   rerank/cross_encoder/           # Reranking module
-    text_cross_encoder.py         # Public facade
+    text_cross_encoder.py         # TextCrossEncoder facade, including YesNo models
     qwen3_cross_encoder.py, gguf_cross_encoder.py, ...
 tests/
   test_utils.py, test_pooling.py, test_qwen3_embedding.py, ...

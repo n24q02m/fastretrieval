@@ -8,7 +8,10 @@ contracts mo rong ra ngoai family nay. License: Apache-2.0.
 ## Package identity
 
 - Distribution/import: `fastretrieval`.
-- Install: `pip install fastretrieval`; optional GGUF: `pip install fastretrieval[gguf]`.
+- Install the text-only runtime with `pip install fastretrieval`.
+- Install image and ColPali support with `pip install "fastretrieval[image]"`.
+- Install the full optional runtime with `pip install "fastretrieval[all]"`; it includes the
+  GGUF backend. `pip install fastretrieval[gguf]` installs only the GGUF backend.
 - Env moi: `FASTRETRIEVAL_CACHE_PATH` va `FASTRETRIEVAL_MAX_INPUT_LENGTH`.
 - Env tuong thich deprecated: `QWEN3_EMBED_CACHE_PATH` va `QWEN3_EMBED_MAX_INPUT_LENGTH`.
   Ten moi duoc uu tien neu ca hai duoc dat; ten cu van doc duoc va phat `DeprecationWarning`.
@@ -55,12 +58,19 @@ mise run fix       # ruff fix + format
 
 ```
 fastretrieval/                    # Main package (KHONG phai src layout)
-  __init__.py                     # Public API: TextEmbedding, TextCrossEncoder
+  __init__.py                     # Public API: TextEmbedding, SparseTextEmbedding,
+                                  # LateInteractionTextEmbedding, ImageEmbedding,
+                                  # LateInteractionMultimodalEmbedding, TextCrossEncoder
   py.typed                        # PEP 561 marker
   parallel_processor.py           # Multiprocessing worker pool
   common/                         # types, utils, model_description, model_management, onnx_model
   text/                           # Embedding: text_embedding.py (facade), onnx/qwen3/gguf variants
-  rerank/cross_encoder/           # Reranking: text_cross_encoder.py (facade), qwen3/gguf variants
+  models/                         # Retrieval modalities beyond dense text
+    sparse/                        # SPLADE facade: SparseTextEmbedding
+    late_interaction/              # ColBERT facade: LateInteractionTextEmbedding
+    image/                         # ImageEmbedding (requires the image extra)
+    late_interaction_multimodal/   # ColPali facade (requires the image extra)
+  rerank/cross_encoder/           # TextCrossEncoder facade, including YesNo models
 tests/
   test_utils.py, test_pooling.py, test_qwen3_embedding.py, ...
   test_integration.py             # Can real model download
@@ -95,7 +105,8 @@ PSR v10 (workflow_dispatch) -> PyPI. Dockerfile cung cap stdio/http targets.
 
 - KHONG phai src layout: package truc tiep tai `fastretrieval/`, khong phai `src/fastretrieval/`.
 - `requires-python = ">=3.11"` -- ho tro rong hon cac project khac (3.11-3.14).
-- Optional dependency: `pip install fastretrieval[gguf]` cho llama-cpp-python.
+- Optional extras: `fastretrieval[image]` adds image and ColPali support; `fastretrieval[all]`
+  includes image and GGUF support; `fastretrieval[gguf]` installs only llama-cpp-python.
 - GPU auto-detect: ONNX (onnxruntime-gpu/directml), GGUF (llama-cpp-python CUDA build).
 - Last-token pooling (khong phai mean pooling) + MRL support (truncate 32-1024 dims).
 - YesNo reranker variant: ~10x it RAM (~598MB vs ~12GB).
