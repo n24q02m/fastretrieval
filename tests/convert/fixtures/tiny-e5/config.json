@@ -1,0 +1,7 @@
+{
+  "architectures": ["BertModel"],
+  "fastretrieval_model_family": "e5",
+  "hidden_size": 384,
+  "max_position_embeddings": 512,
+  "model_type": "bert"
+}
