@@ -13,6 +13,7 @@ from fastretrieval.common.model_description import (
     ModelSource,
     PoolingType,
 )
+from fastretrieval.contract.preprocessor import PreprocessorSpec
 
 
 @dataclass
@@ -46,6 +47,7 @@ class CustomModelSpec:
     normalization: bool = True
     max_seq_len: int | None = None
     additional_files: list[str] = field(default_factory=list)
+    preprocessor: PreprocessorSpec | None = None
 
     def register(self) -> None:
         """Register this model with :class:`TextEmbedding` so it can be loaded by id."""
