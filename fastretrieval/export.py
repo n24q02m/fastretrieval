@@ -30,7 +30,8 @@ def export_to_onnx(model_id: str, output_dir: str, *, task: str = "feature-extra
         The ``output_dir`` path containing the exported model.
 
     Raises:
-        ImportError: if the ``[export]`` extra is not installed.
+        ImportError: if optimum/torch/transformers are not installed in the
+            current environment. See ``fastretrieval/convert/requirements.txt``.
     """
     try:
         from optimum.exporters.onnx import main_export

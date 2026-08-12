@@ -1,0 +1,9 @@
+torch>=2.4
+transformers>=4.47
+optimum[exporters]>=1.24
+onnx>=1.17
+onnxruntime>=1.21
+onnxconverter-common>=1.14
+huggingface-hub>=0.30
+gguf>=0.6
+sentencepiece>=0.1
