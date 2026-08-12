@@ -98,4 +98,15 @@ def main(argv: list[str] | None = None) -> int:
         for name, megabytes in sizes.items():
             print(f"{name}: {megabytes:.1f} MB")
         return 0
+    if args.command == "gguf":
+        from fastretrieval.convert.gguf import convert_gguf
+
+        path = convert_gguf(
+            args.source,
+            args.out,
+            quant=args.quant,
+            llama_cpp=args.llama_cpp,
+        )
+        print(path)
+        return 0
     raise AssertionError(f"unhandled command {args.command!r}")
