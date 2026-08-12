@@ -1,6 +1,7 @@
 """Tests for the optional HF-id to ONNX export helper."""
 
 import importlib.util
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,7 +24,11 @@ def test_export_without_extra_raises_helpful_error(tmp_path):
 
 def test_export_mocked(tmp_path):
     """Test export_to_onnx by mocking optimum to ensure coverage without heavy deps."""
-    mock_main_export = MagicMock()
+
+    def fake_main_export(model_id, *, output, task, opset):
+        Path(output).joinpath("model.onnx").write_bytes(b"onnx")
+
+    mock_main_export = MagicMock(side_effect=fake_main_export)
     # We mock the entire path to avoid ImportError when optimum is not installed
     with patch.dict(
         "sys.modules",
@@ -44,9 +49,25 @@ def test_export_mocked(tmp_path):
 
         assert result == output_dir
         assert (tmp_path / "exported").exists()
+        assert (tmp_path / "exported" / "onnx" / "model.onnx").exists()
         mock_main_export.assert_called_once_with(
             model_id, output=output_dir, task="test-task", opset=21
         )
+
+
+def test_export_requires_an_onnx_artifact(tmp_path):
+    with (
+        patch.dict(
+            "sys.modules",
+            {
+                "optimum": MagicMock(),
+                "optimum.exporters": MagicMock(),
+                "optimum.exporters.onnx": MagicMock(main_export=MagicMock()),
+            },
+        ),
+        pytest.raises(FileNotFoundError, match="model.onnx"),
+    ):
+        export_to_onnx("mock/model", str(tmp_path / "exported"))
 
 
 @pytest.mark.integration

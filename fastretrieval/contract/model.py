@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Literal
 
 from fastretrieval.common.model_description import PoolingType
@@ -121,6 +121,12 @@ class ModelContract:
             raise ValueError(f"{self.model_id}: tokenizer_files must be a tuple or list")
         if any(not isinstance(item, str) or not item for item in self.tokenizer_files):
             raise ValueError(f"{self.model_id}: tokenizer_files must contain non-empty strings")
+        unsafe = [item for item in self.tokenizer_files if not _is_safe_relative_path(item)]
+        if unsafe:
+            raise ValueError(
+                f"{self.model_id}: tokenizer_files must contain safe relative paths; "
+                f"got {unsafe!r}"
+            )
         if len(set(self.tokenizer_files)) != len(self.tokenizer_files):
             raise ValueError(f"{self.model_id}: tokenizer_files must not contain duplicates")
         if self.output_shape is not None:
@@ -181,3 +187,17 @@ class ModelContract:
 
 ModelSpec = ModelContract
 RerankerSpec = ModelContract
+
+
+def _is_safe_relative_path(value: str) -> bool:
+    """Return whether a manifest path stays below the artifact directory."""
+    normalized = value.replace("\\", "/")
+    posix = PurePosixPath(normalized)
+    windows = PureWindowsPath(value)
+    return not (
+        "\x00" in value
+        or posix.is_absolute()
+        or windows.drive
+        or windows.root
+        or any(part in {".", ".."} for part in posix.parts)
+    )

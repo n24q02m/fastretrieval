@@ -45,6 +45,24 @@ def export_to_onnx(
     except ImportError as e:
         raise ImportError(_MISSING_EXPORT_DEPS) from e
 
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    destination = Path(output_dir)
+    destination.mkdir(parents=True, exist_ok=True)
     main_export(model_id, output=output_dir, task=task, opset=opset)
+
+    # Optimum has written ``model.onnx`` at the export root in recent
+    # releases, while fastretrieval's runtime contract is
+    # ``onnx/model.onnx``. Normalize both layouts here so callers do not
+    # depend on the exporter version's directory convention.
+    nested = destination / "onnx" / "model.onnx"
+    root = destination / "model.onnx"
+    if not nested.exists() and root.exists():
+        nested.parent.mkdir(parents=True, exist_ok=True)
+        root.replace(nested)
+        external_data = destination / "model.onnx.data"
+        if external_data.exists():
+            external_data.replace(nested.with_name("model.onnx.data"))
+    if not nested.exists():
+        raise FileNotFoundError(
+            f"ONNX exporter did not write model.onnx under {destination} or {nested.parent}"
+        )
     return output_dir

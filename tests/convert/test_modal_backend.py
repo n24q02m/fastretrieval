@@ -1,8 +1,14 @@
+import asyncio
 import importlib.util
+from pathlib import Path
 
 import pytest
 
-from fastretrieval.convert.modal_backend import BACKENDS, resolve_backend
+from fastretrieval.convert.modal_backend import (
+    BACKENDS,
+    _download_artifact,
+    resolve_backend,
+)
 
 
 def test_local_is_the_default():
@@ -32,3 +38,43 @@ def test_modal_backend_explains_itself_when_modal_is_absent(monkeypatch):
 
 def test_backends_tuple_is_the_single_source_of_truth():
     assert BACKENDS == ("local", "modal")
+
+
+class _Entry:
+    type = "FILE"
+
+    def __init__(self, path: str):
+        self.path = path
+
+
+class _AsyncVolume:
+    def __init__(self, files: dict[str, bytes]):
+        self.files = files
+        self.reloaded = False
+
+    async def reload(self):
+        self.reloaded = True
+
+    async def iterdir(self, _root: str, *, recursive: bool):
+        for path in self.files:
+            yield _Entry(path)
+
+    async def read_file(self, path: str):
+        yield self.files[path]
+
+
+def test_download_artifact_awaits_current_modal_volume_api(tmp_path: Path):
+    volume = _AsyncVolume({"/mnt/output/artifact/onnx/model.onnx": b"onnx"})
+
+    files = asyncio.run(_download_artifact(volume, "/mnt/output/artifact", tmp_path / "out"))
+
+    assert volume.reloaded is True
+    assert files == ["onnx/model.onnx"]
+    assert (tmp_path / "out" / "onnx" / "model.onnx").read_bytes() == b"onnx"
+
+
+def test_download_artifact_rejects_path_traversal(tmp_path: Path):
+    volume = _AsyncVolume({"/mnt/output/artifact/../escape": b"bad"})
+
+    with pytest.raises(ValueError, match="unsafe artifact path"):
+        asyncio.run(_download_artifact(volume, "/mnt/output/artifact", tmp_path / "out"))

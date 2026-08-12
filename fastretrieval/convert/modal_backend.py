@@ -8,7 +8,9 @@ Volume instead of being serialized through the function return value.
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
+import inspect
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -19,7 +21,8 @@ _IMAGE_PACKAGES = (
     "transformers>=4.47",
     "optimum-onnx[onnxruntime]>=0.1.0",
     "onnx>=1.17",
-    "onnxruntime>=1.21",
+    "onnxruntime[quantization]>=1.21",
+    "onnx-ir>=0.2.0",
     "onnxconverter-common>=1.14",
     "huggingface-hub>=0.30",
     "gguf>=0.6",
@@ -59,7 +62,7 @@ def _is_file_entry(entry: Any) -> bool:
     return "FILE" in name
 
 
-def _write_volume_file(volume: Any, remote_path: str, destination: Path) -> None:
+async def _write_volume_file(volume: Any, remote_path: str, destination: Path) -> None:
     data = volume.read_file(remote_path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("wb") as handle:
@@ -68,16 +71,22 @@ def _write_volume_file(volume: Any, remote_path: str, destination: Path) -> None
         elif hasattr(data, "read"):
             while chunk := data.read(1024 * 1024):
                 handle.write(chunk)
+        elif hasattr(data, "__aiter__"):
+            async for chunk in data:
+                handle.write(chunk)
         else:
             for chunk in data:
                 handle.write(chunk)
 
 
-def _download_artifact(volume: Any, remote_root: str, output_dir: Path) -> list[str]:
-    volume.reload()
+async def _download_artifact(volume: Any, remote_root: str, output_dir: Path) -> list[str]:
+    reload_result = volume.reload()
+    if inspect.isawaitable(reload_result):
+        await reload_result
     root = remote_root.rstrip("/")
     downloaded: list[str] = []
-    for entry in volume.iterdir(root, recursive=True):
+    entries = volume.iterdir(root, recursive=True)
+    async for entry in _async_entries(entries):
         if not _is_file_entry(entry):
             continue
         remote_path = str(entry.path)
@@ -88,11 +97,20 @@ def _download_artifact(volume: Any, remote_root: str, output_dir: Path) -> list[
         if not relative.parts or ".." in relative.parts:
             raise ValueError(f"Modal returned an unsafe artifact path: {remote_path}")
         destination = output_dir.joinpath(*relative.parts)
-        _write_volume_file(volume, remote_path, destination)
+        await _write_volume_file(volume, remote_path, destination)
         downloaded.append(relative.as_posix())
     if not downloaded:
         raise RuntimeError(f"Modal conversion returned no files under {remote_root}")
     return sorted(downloaded)
+
+
+async def _async_entries(entries: Any):
+    if hasattr(entries, "__aiter__"):
+        async for entry in entries:
+            yield entry
+    else:
+        for entry in entries:
+            yield entry
 
 
 def _rewrite_result(result: Any, remote_root: str, output_dir: Path) -> Any:
@@ -162,43 +180,52 @@ def run_remote(command: str, **kwargs: Any) -> dict[str, Any]:
         payload["llama_cpp"] = "/mnt/llama-cpp"
     payload["out_dir"] = _REMOTE_OUTPUT
 
-    with modal.Volume.ephemeral() as volume:
-        app = modal.App("fastretrieval-convert")
+    async def execute() -> dict[str, Any]:
+        async with modal.Volume.ephemeral() as volume:
+            app = modal.App("fastretrieval-convert")
 
-        @app.function(
-            image=image,
-            memory=32768,
-            cpu=4.0,
-            timeout=3600,
-            volumes={"/mnt/output": volume},
-        )
-        def _convert(remote_command: str, remote_payload: dict[str, Any]) -> dict[str, Any]:
-            if remote_command == "onnx":
-                from fastretrieval.convert.onnx import convert_onnx
+            @app.function(
+                image=image,
+                memory=32768,
+                cpu=4.0,
+                timeout=3600,
+                volumes={"/mnt/output": volume},
+            )
+            async def _convert(
+                remote_command: str, remote_payload: dict[str, Any]
+            ) -> dict[str, Any]:
+                if remote_command == "onnx":
+                    from fastretrieval.convert.onnx import convert_onnx
 
-                result = convert_onnx(**remote_payload)
-                volume.commit()
-                return {"result": result}
-            if remote_command == "gguf":
-                from fastretrieval.convert.gguf import convert_gguf
+                    result = convert_onnx(**remote_payload)
+                    await volume.commit()
+                    return {"result": result}
+                if remote_command == "gguf":
+                    from fastretrieval.convert.gguf import convert_gguf
 
-                result = convert_gguf(**remote_payload)
-                volume.commit()
-                return {"result": {"path": str(result)}}
-            raise ValueError(f"unsupported remote command {remote_command!r}")
+                    result = convert_gguf(**remote_payload)
+                    await volume.commit()
+                    return {"result": {"path": str(result)}}
+                raise ValueError(f"unsupported remote command {remote_command!r}")
 
-        with app.run():
-            remote_result = _convert.remote(command, payload)
+            async with app.run():
+                remote_result = await _convert.remote.aio(command, payload)
 
-        files = _download_artifact(volume, _REMOTE_OUTPUT, output_dir)
+            files = await _download_artifact(volume, _REMOTE_OUTPUT, output_dir)
 
-    return {
-        "backend": "modal",
-        "command": command,
-        "out_dir": str(output_dir),
-        "files": files,
-        "result": _rewrite_result(remote_result["result"], _REMOTE_OUTPUT, output_dir),
-    }
+        return {
+            "backend": "modal",
+            "command": command,
+            "out_dir": str(output_dir),
+            "files": files,
+            "result": _rewrite_result(remote_result["result"], _REMOTE_OUTPUT, output_dir),
+        }
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(execute())
+    raise RuntimeError("run_remote is synchronous and cannot run inside an active event loop")
 
 
 __all__ = ["BACKENDS", "resolve_backend", "run_remote"]

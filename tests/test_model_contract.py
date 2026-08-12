@@ -84,6 +84,19 @@ def test_manifest_rejects_missing_or_unsupported_fields(
         ModelContract.from_manifest(_write_manifest(tmp_path, payload))
 
 
+@pytest.mark.parametrize(
+    "tokenizer_path", ["../outside", r"..\outside", "/absolute/file", r"C:\outside"]
+)
+def test_manifest_rejects_tokenizer_paths_outside_artifact_root(
+    tmp_path: Path, tokenizer_path: str
+):
+    payload = _payload("acme/path-traversal")
+    payload["tokenizer_files"] = [tokenizer_path]
+
+    with pytest.raises(ValueError, match="safe relative paths"):
+        ModelContract.from_manifest(_write_manifest(tmp_path, payload))
+
+
 def test_write_manifest_preserves_only_supplied_metadata(tmp_path: Path):
     contract = ModelContract.from_manifest(_write_manifest(tmp_path, _payload()))
     path = tmp_path / "written.json"

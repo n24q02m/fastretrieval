@@ -110,7 +110,7 @@ def quantize_int8(fp32_path: Path, out_path: Path) -> float:
 
 def quantize_q4f16(fp32_path: Path, out_path: Path) -> float:
     """Trọng số INT4, kích hoạt FP16. Trả kích thước kết quả tính bằng MB."""
-    require_convert_deps("onnx", "onnxconverter_common", "onnxruntime")
+    require_convert_deps("onnx", "onnxconverter_common", "onnxruntime", "onnx_ir")
     import onnx
     from onnxconverter_common import float16
     from onnxruntime.quantization.matmul_nbits_quantizer import MatMulNBitsQuantizer

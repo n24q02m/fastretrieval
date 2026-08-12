@@ -249,8 +249,9 @@ family in the support matrix and it produces an artifact with a declarative
 contract manifest. Unsupported architectures fail closed instead of producing a
 misleading artifact.
 
-The conversion dependencies (`torch`, `transformers`, and `optimum-onnx`) are
-deliberately not runtime dependencies. Run conversion in a throwaway environment:
+The conversion dependencies (`torch`, `transformers`, `optimum-onnx`, and the
+ONNX Runtime quantizer stack including `onnx-ir`) are deliberately not runtime
+dependencies. Run conversion in a throwaway environment:
 
 ```bash
 uv run --with-requirements fastretrieval/convert/requirements.txt \
