@@ -43,6 +43,13 @@ def test_parser_accepts_explicit_non_qwen_contract_metadata():
     assert (args.modality, args.pooling, args.normalize) == ("text", "mean", True)
 
 
+def test_conversion_commands_expose_the_optional_remote_backend():
+    parser = build_parser()
+    for command in ("onnx", "gguf"):
+        args = parser.parse_args([command, "acme/tiny-model", "--out", "/tmp/out"])
+        assert args.backend is None
+
+
 def test_parser_has_no_flag_without_an_implementation():
     """Cờ khai trong parser mà không có nhánh xử lý = no-op im lặng."""
     parser = build_parser()

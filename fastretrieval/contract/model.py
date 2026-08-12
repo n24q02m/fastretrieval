@@ -51,31 +51,45 @@ class ModelContract:
     exporter_version: str | None = None
 
     def __post_init__(self) -> None:
-        if not self.model_id.strip():
+        if not isinstance(self.model_id, str) or not self.model_id.strip():
             raise ValueError("model_id must not be empty")
-        if not self.source.strip():
+        if not isinstance(self.source, str) or not self.source.strip():
             raise ValueError(f"{self.model_id}: source must not be empty")
-        if not self.model_family.strip():
+        if not isinstance(self.model_family, str) or not self.model_family.strip():
             raise ValueError(f"{self.model_id}: model_family must not be empty")
-        if self.task not in _MODEL_TASKS:
+        if not isinstance(self.task, str) or self.task not in _MODEL_TASKS:
             raise ValueError(f"{self.model_id}: unsupported task {self.task!r}")
-        if self.modality not in _MODEL_MODALITIES:
+        if not isinstance(self.modality, str) or self.modality not in _MODEL_MODALITIES:
             raise ValueError(f"{self.model_id}: unsupported modality {self.modality!r}")
         try:
-            pooling = PoolingType(self.pooling)
-        except ValueError as exc:
+            pooling = (
+                self.pooling
+                if isinstance(self.pooling, PoolingType)
+                else PoolingType(str(self.pooling).upper())
+            )
+        except (TypeError, ValueError) as exc:
             raise ValueError(f"{self.model_id}: unsupported pooling {self.pooling!r}") from exc
         object.__setattr__(self, "pooling", pooling)
         if not isinstance(self.normalization, bool):
             raise ValueError(f"{self.model_id}: normalization must be boolean")
         if self.output_dim is None and self.output_shape is None:
             raise ValueError(f"{self.model_id}: output_dim or output_shape is required")
-        if self.output_dim is not None and self.output_dim <= 0:
+        if self.output_dim is not None and (
+            not isinstance(self.output_dim, int)
+            or isinstance(self.output_dim, bool)
+            or self.output_dim <= 0
+        ):
             raise ValueError(f"{self.model_id}: output_dim must be positive")
         if self.output_shape is not None:
+            if not isinstance(self.output_shape, (tuple, list)):
+                raise ValueError(f"{self.model_id}: output_shape must be a tuple or list")
             if not self.output_shape:
                 raise ValueError(f"{self.model_id}: output_shape must not be empty")
-            if any(value is not None and value <= 0 for value in self.output_shape):
+            if any(
+                value is not None
+                and (not isinstance(value, int) or isinstance(value, bool) or value <= 0)
+                for value in self.output_shape
+            ):
                 raise ValueError(f"{self.model_id}: output_shape values must be positive")
             if (
                 self.output_dim is not None
@@ -84,19 +98,31 @@ class ModelContract:
                 and self.output_shape[0] != self.output_dim
             ):
                 raise ValueError(f"{self.model_id}: output_dim disagrees with output_shape")
-        if self.max_seq_len is not None and self.max_seq_len <= 0:
+        if self.max_seq_len is not None and (
+            not isinstance(self.max_seq_len, int)
+            or isinstance(self.max_seq_len, bool)
+            or self.max_seq_len <= 0
+        ):
             raise ValueError(f"{self.model_id}: max_seq_len must be positive")
         if not isinstance(self.preprocessor, PreprocessorSpec):
             raise ValueError(f"{self.model_id}: preprocessor must be a PreprocessorSpec")
+        if not isinstance(self.artifact_formats, (tuple, list)):
+            raise ValueError(f"{self.model_id}: artifact_formats must be a tuple or list")
         formats = tuple(self.artifact_formats)
         if not formats:
             raise ValueError(f"{self.model_id}: artifact_formats is required")
         unsupported = [item for item in formats if item not in _ARTIFACT_FORMATS]
         if unsupported:
             raise ValueError(f"{self.model_id}: unsupported artifact_formats {unsupported!r}")
+        if len(set(formats)) != len(formats):
+            raise ValueError(f"{self.model_id}: artifact_formats must not contain duplicates")
         object.__setattr__(self, "artifact_formats", formats)
+        if not isinstance(self.tokenizer_files, (tuple, list)):
+            raise ValueError(f"{self.model_id}: tokenizer_files must be a tuple or list")
         if any(not isinstance(item, str) or not item for item in self.tokenizer_files):
             raise ValueError(f"{self.model_id}: tokenizer_files must contain non-empty strings")
+        if len(set(self.tokenizer_files)) != len(self.tokenizer_files):
+            raise ValueError(f"{self.model_id}: tokenizer_files must not contain duplicates")
         if self.output_shape is not None:
             object.__setattr__(self, "output_shape", tuple(self.output_shape))
         object.__setattr__(self, "tokenizer_files", tuple(self.tokenizer_files))

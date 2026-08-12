@@ -1,0 +1,71 @@
+name: convert
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: HuggingFace model id to convert as a smoke test
+        required: false
+        default: hf-internal-testing/tiny-random-BertModel
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+
+      - name: Convert a tiny model end to end
+        env:
+          MODEL: ${{ inputs.model || 'hf-internal-testing/tiny-random-BertModel' }}
+        run: |
+          uv run --with-requirements fastretrieval/convert/requirements.txt \
+            python -m fastretrieval.convert onnx "$MODEL" \
+            --out ./smoke-out --pooling mean --normalize
+
+      - name: Check the artifacts exist
+        run: |
+          test -f ./smoke-out/onnx/model_quantized.onnx
+          test -f ./smoke-out/onnx/model_q4f16.onnx
+          test -f ./smoke-out/fastretrieval-manifest.json
+          test -f ./smoke-out/config.json
+          test -f ./smoke-out/tokenizer.json
+          test -f ./smoke-out/tokenizer_config.json
+
+      - name: Verify parity and load the runtime inputs
+        env:
+          MODEL: ${{ inputs.model || 'hf-internal-testing/tiny-random-BertModel' }}
+        run: |
+          uv run --with-requirements fastretrieval/convert/requirements.txt \
+            python -m fastretrieval.convert verify ./smoke-out --source "$MODEL"
+          uv run --with-requirements fastretrieval/convert/requirements.txt python - <<'PY'
+          from pathlib import Path
+
+          import onnxruntime as ort
+
+          from fastretrieval.common.preprocessor_utils import load_tokenizer
+
+          root = Path("smoke-out")
+          load_tokenizer(root)
+          for artifact in sorted((root / "onnx").glob("*.onnx")):
+              session = ort.InferenceSession(
+                  str(artifact), providers=["CPUExecutionProvider"]
+              )
+              assert session.get_inputs(), artifact
+              assert session.get_outputs(), artifact
+          print("converted ONNX variants load with runtime tokenizer and ORT")
+          PY

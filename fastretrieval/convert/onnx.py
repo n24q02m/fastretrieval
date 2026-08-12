@@ -6,6 +6,10 @@ lượng tử hoá là phần optimum không làm.
 
 from __future__ import annotations
 
+import importlib.metadata
+import os
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +18,61 @@ from loguru import logger
 from fastretrieval.convert import require_convert_deps
 
 VALID_VARIANTS = ("int8", "q4f16")
+
+
+def _exporter_version() -> str:
+    try:
+        return f"optimum {importlib.metadata.version('optimum')}"
+    except importlib.metadata.PackageNotFoundError:
+        return "optimum unknown"
+
+
+def _promote_artifact_directory(staging_dir: Path, out_dir: Path) -> None:
+    """Promote a complete staged artifact without leaving a partial output."""
+    if out_dir.exists():
+        if not out_dir.is_dir():
+            raise FileExistsError(f"output path is not a directory: {out_dir}")
+        if any(out_dir.iterdir()):
+            raise FileExistsError(
+                f"output directory is not empty: {out_dir}; choose a new output path"
+            )
+        out_dir.rmdir()
+    os.replace(staging_dir, out_dir)
+
+
+def _ensure_tokenizer_files(
+    source: str, artifact_dir: Path, required_files: tuple[str, ...]
+) -> None:
+    """Ensure every runtime file named by the contract is in the artifact."""
+    missing = [relative for relative in required_files if not (artifact_dir / relative).is_file()]
+    if missing:
+        source_dir = Path(source)
+        if source_dir.is_dir():
+            for relative in missing:
+                source_file = source_dir / relative
+                if not source_file.is_file():
+                    raise FileNotFoundError(
+                        f"{source}: tokenizer file required by manifest is missing: {relative}"
+                    )
+                destination = artifact_dir / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source_file, destination)
+        else:
+            from huggingface_hub import hf_hub_download
+
+            for relative in missing:
+                source_file = Path(hf_hub_download(repo_id=source, filename=relative))
+                destination = artifact_dir / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source_file, destination)
+
+    remaining = [
+        relative for relative in required_files if not (artifact_dir / relative).is_file()
+    ]
+    if remaining:
+        raise FileNotFoundError(
+            f"{source}: tokenizer files were not exported: {', '.join(remaining)}"
+        )
 
 
 def fix_cast_nodes(graph: Any) -> None:
@@ -109,45 +168,63 @@ def convert_onnx(
         raise ValueError(f"unknown variant(s): {', '.join(unknown)}; pick from {VALID_VARIANTS}")
     if not variants:
         raise ValueError("at least one variant is required")
+    if len(set(variants)) != len(variants):
+        raise ValueError("variants must not contain duplicates")
 
-    require_convert_deps("torch", "transformers", "optimum", "onnx", "onnxruntime")
-
-    out_dir = Path(out_dir)
-    from fastretrieval.convert.manifest import write_manifest
     from fastretrieval.convert.profiles import resolve_profile
 
     profile = resolve_profile(source, task=task, modality=modality)
+    require_convert_deps("torch", "transformers", "optimum", "onnx", "onnxruntime")
+
+    out_dir = Path(out_dir)
     contract = profile.build_contract(
         pooling=pooling,
         normalization=normalization,
+        artifact_formats=("onnx",),
+        quantization=",".join(variants),
+        exporter_version=_exporter_version(),
         yes_no=yes_no,
     )
-    onnx_dir = out_dir / "onnx"
-    onnx_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        dir=out_dir.parent, prefix=f".{out_dir.name}.staging-"
+    ) as temporary:
+        staging_dir = Path(temporary) / "artifact"
+        onnx_dir = staging_dir / "onnx"
+        onnx_dir.mkdir(parents=True, exist_ok=True)
 
-    if yes_no is not None:
-        from fastretrieval.convert.heads import export_yes_no_head
+        if yes_no is not None:
+            from fastretrieval.convert.heads import export_yes_no_head
 
-        fp32_path = export_yes_no_head(source, out_dir, yes_token=yes_no[0], no_token=yes_no[1])
-    else:
-        from fastretrieval.export import export_to_onnx
+            fp32_path = export_yes_no_head(
+                source, staging_dir, yes_token=yes_no[0], no_token=yes_no[1]
+            )
+        else:
+            from fastretrieval.export import export_to_onnx
 
-        export_to_onnx(source, str(out_dir), task=task)
-        fp32_path = onnx_dir / "model.onnx"
-        if not fp32_path.exists():
-            raise FileNotFoundError(f"optimum did not write {fp32_path}")
+            export_to_onnx(source, str(staging_dir), task=task, opset=21)
+            fp32_path = onnx_dir / "model.onnx"
+            if not fp32_path.exists():
+                raise FileNotFoundError(f"optimum did not write {fp32_path}")
 
-    sizes: dict[str, float] = {}
-    if "int8" in variants:
-        sizes["int8"] = quantize_int8(fp32_path, onnx_dir / "model_quantized.onnx")
-    if "q4f16" in variants:
-        sizes["q4f16"] = quantize_q4f16(fp32_path, onnx_dir / "model_q4f16.onnx")
+        _ensure_tokenizer_files(source, staging_dir, contract.tokenizer_files)
 
-    fp32_data = fp32_path.with_suffix(".onnx.data")
-    fp32_path.unlink()
-    if fp32_data.exists():
-        fp32_data.unlink()
+        sizes: dict[str, float] = {}
+        if "int8" in variants:
+            sizes["int8"] = quantize_int8(fp32_path, onnx_dir / "model_quantized.onnx")
+        if "q4f16" in variants:
+            sizes["q4f16"] = quantize_q4f16(fp32_path, onnx_dir / "model_q4f16.onnx")
 
-    write_manifest(out_dir, contract, metadata={"source": source, "variants": variants})
+        fp32_data = fp32_path.with_suffix(".onnx.data")
+        fp32_path.unlink()
+        if fp32_data.exists():
+            fp32_data.unlink()
+
+        from fastretrieval.convert.manifest import write_manifest
+        from fastretrieval.convert.verify import validate_artifacts
+
+        write_manifest(staging_dir, contract, metadata={"variants": variants})
+        validate_artifacts(staging_dir, expected_source=contract.source)
+        _promote_artifact_directory(staging_dir, out_dir)
 
     return sizes

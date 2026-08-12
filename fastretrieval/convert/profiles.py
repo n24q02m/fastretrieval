@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -37,6 +37,8 @@ class _SupportSpec:
     tasks: frozenset[str]
     modalities: frozenset[str]
     artifact_formats: tuple[str, ...]
+    pooling_modes: frozenset[str]
+    normalization_modes: frozenset[bool]
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,10 @@ class ModelProfile:
     preprocessor: PreprocessorSpec
     artifact_formats: tuple[str, ...]
     input_names: tuple[str, ...]
+    supported_tasks: frozenset[str]
+    supported_modalities: frozenset[str]
+    pooling_modes: frozenset[str]
+    normalization_modes: frozenset[bool]
 
     def build_contract(
         self,
@@ -80,11 +86,37 @@ class ModelProfile:
             raise ValueError(f"{context}: normalization must be boolean")
 
         normalized_pooling = _normalize_pooling(pooling, context)
+        if normalized_pooling.value not in self.pooling_modes:
+            raise ValueError(
+                f"{context}: pooling {normalized_pooling.value!r} is not supported; "
+                f"pick from {sorted(self.pooling_modes)}"
+            )
+        if normalization not in self.normalization_modes:
+            raise ValueError(
+                f"{context}: normalization={normalization!r} is not supported; "
+                f"pick from {sorted(self.normalization_modes)}"
+            )
+
+        if preprocessor is not None and not isinstance(preprocessor, PreprocessorSpec):
+            raise ValueError(f"{context}: preprocessor must be a PreprocessorSpec")
         dim = output_dim if output_dim is not None else self.output_dim
         shape = output_shape
         if yes_no is not None:
+            if self.task != "generative_reranker":
+                raise ValueError(
+                    f"{context}: yes_no output is only supported for generative_reranker"
+                )
+            if normalization:
+                raise ValueError(f"{context}: yes_no logits cannot declare normalization=True")
             dim = 2
             shape = (2,)
+        elif (
+            self.task in {"cross_encoder", "generative_reranker"} and dim is None and shape is None
+        ):
+            raise ValueError(
+                f"{context}: task {self.task!r} requires explicit output_dim/output_shape "
+                "or a yes_no head"
+            )
         if dim is None and shape is None:
             raise ValueError(f"{context}: output_dim or output_shape metadata is required")
         if shape is None and dim is not None:
@@ -98,7 +130,20 @@ class ModelProfile:
             raise ValueError(f"{context}: tokenizer_files metadata is required")
         if not formats:
             raise ValueError(f"{context}: artifact_formats metadata is required")
+        if len(set(formats)) != len(formats):
+            raise ValueError(f"{context}: artifact_formats must not contain duplicates")
+        unsupported_formats = [item for item in formats if item not in self.artifact_formats]
+        if unsupported_formats:
+            raise ValueError(
+                f"{context}: artifact format(s) are outside the profile: "
+                f"{unsupported_formats!r}; pick from {self.artifact_formats!r}"
+            )
         processor = self.preprocessor if preprocessor is None else preprocessor
+        if processor.kind != self.modality:
+            raise ValueError(
+                f"{context}: preprocessor kind {processor.kind!r} does not match "
+                f"modality {self.modality!r}"
+            )
 
         return ModelContract(
             model_id=str(self.config.get("_model_id", self.source)),
@@ -130,6 +175,8 @@ SUPPORT_MATRIX: tuple[_SupportSpec, ...] = (
         tasks=frozenset({"dense", "generative_reranker"}),
         modalities=frozenset({"text"}),
         artifact_formats=("onnx", "gguf"),
+        pooling_modes=frozenset({"CLS", "MEAN", "LAST_TOKEN"}),
+        normalization_modes=frozenset({True, False}),
     ),
     _SupportSpec(
         model_family="bert",
@@ -137,6 +184,8 @@ SUPPORT_MATRIX: tuple[_SupportSpec, ...] = (
         tasks=frozenset({"dense", "cross_encoder"}),
         modalities=frozenset({"text"}),
         artifact_formats=("onnx",),
+        pooling_modes=frozenset({"CLS", "MEAN", "LAST_TOKEN"}),
+        normalization_modes=frozenset({True, False}),
     ),
 )
 
@@ -157,34 +206,44 @@ def resolve_profile(
 
     config = _load_config(source_text, source)
     declared = _declared_architectures(config)
-    spec = next(
-        (
-            candidate
-            for candidate in SUPPORT_MATRIX
-            if declared.intersection(candidate.architecture_keys)
-        ),
-        None,
-    )
     context = f"source={source_text} task={task} modality={modality}"
-    if spec is None:
+    matches = [
+        candidate
+        for candidate in SUPPORT_MATRIX
+        if declared.intersection(candidate.architecture_keys)
+    ]
+    if not matches:
         raise ValueError(
             f"{context}: architecture {sorted(declared) or '<missing>'!r} is outside support matrix"
         )
+    if len(matches) != 1:
+        families = ", ".join(sorted(candidate.model_family for candidate in matches))
+        raise ValueError(
+            f"{context}: architecture {sorted(declared)!r} matches multiple support profiles "
+            f"({families}); declare exactly one supported family"
+        )
+    spec = matches[0]
     if normalized_task not in spec.tasks:
         raise ValueError(f"{context}: task is not supported for {spec.model_family!r}")
     if modality not in spec.modalities:
         raise ValueError(f"{context}: modality is not supported for {spec.model_family!r}")
 
-    architecture = next(value for value in declared if value in spec.architecture_keys)
+    model_type = config.get("model_type")
+    if isinstance(model_type, str) and model_type.lower() in spec.architecture_keys:
+        architecture = model_type.lower()
+    else:
+        architecture = sorted(declared.intersection(spec.architecture_keys))[0]
     model_family = config.get("fastretrieval_model_family", spec.model_family)
     if not isinstance(model_family, str) or not model_family.strip():
         raise ValueError(f"{context}: fastretrieval_model_family must be a non-empty string")
 
-    output_dim = _read_positive_int(config, "sentence_embedding_dimension")
-    if output_dim is None:
-        output_dim = _read_positive_int(config, "projection_dim")
-    if output_dim is None:
-        output_dim = _read_positive_int(config, "hidden_size")
+    output_dim = None
+    if normalized_task == "dense":
+        output_dim = _read_positive_int(config, "sentence_embedding_dimension")
+        if output_dim is None:
+            output_dim = _read_positive_int(config, "projection_dim")
+        if output_dim is None:
+            output_dim = _read_positive_int(config, "hidden_size")
     max_seq_len = _read_positive_int(config, "max_seq_len")
     if max_seq_len is None:
         max_seq_len = _read_positive_int(config, "max_position_embeddings")
@@ -200,6 +259,7 @@ def resolve_profile(
 
     config_with_id = dict(config)
     config_with_id["_model_id"] = source_text
+    input_names = _read_input_names(config, context)
     return ModelProfile(
         source=source_text,
         model_family=model_family,
@@ -209,10 +269,14 @@ def resolve_profile(
         config=config_with_id,
         output_dim=output_dim,
         max_seq_len=max_seq_len,
-        tokenizer_files=("tokenizer.json",),
+        tokenizer_files=("config.json", "tokenizer.json", "tokenizer_config.json"),
         preprocessor=processor,
         artifact_formats=spec.artifact_formats,
-        input_names=tuple(config.get("input_names", ("input_ids", "attention_mask"))),
+        input_names=input_names,
+        supported_tasks=spec.tasks,
+        supported_modalities=spec.modalities,
+        pooling_modes=spec.pooling_modes,
+        normalization_modes=spec.normalization_modes,
     )
 
 
@@ -297,6 +361,18 @@ def _read_positive_int(config: Mapping[str, Any], key: str) -> int | None:
     if isinstance(value, int) and not isinstance(value, bool) and value > 0:
         return value
     return None
+
+
+def _read_input_names(config: Mapping[str, Any], context: str) -> tuple[str, ...]:
+    value = config.get("input_names", ("input_ids", "attention_mask"))
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+        raise ValueError(f"{context}: input_names must be a sequence of non-empty strings")
+    names = tuple(value)
+    if not names or any(not isinstance(name, str) or not name.strip() for name in names):
+        raise ValueError(f"{context}: input_names must be a sequence of non-empty strings")
+    if len(set(names)) != len(names):
+        raise ValueError(f"{context}: input_names must not contain duplicates")
+    return names
 
 
 __all__ = ["ModelProfile", "SUPPORT_MATRIX", "resolve_profile"]

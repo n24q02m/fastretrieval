@@ -41,7 +41,9 @@ def test_export_mocked(tmp_path):
 
         assert result == output_dir
         assert (tmp_path / "exported").exists()
-        mock_main_export.assert_called_once_with(model_id, output=output_dir, task="test-task")
+        mock_main_export.assert_called_once_with(
+            model_id, output=output_dir, task="test-task", opset=21
+        )
 
 
 @pytest.mark.integration

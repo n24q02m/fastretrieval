@@ -102,3 +102,12 @@ PSR v10 (workflow_dispatch) -> PyPI. Dockerfile cung cap stdio/http targets.
 - Model cache: HuggingFace Hub cache directory.
 - Pre-commit: ruff lint + format, pytest unit only.
 - Secrets: dung namespace SSM/skret do repo cau hinh (region `ap-southeast-1`); khong hardcode credentials.
+
+## Converter
+
+The converter stack is isolated in `fastretrieval/convert/requirements.txt`; run it with
+`uv run --with-requirements` instead of adding heavy export dependencies to the runtime
+lock. ONNX conversion requires explicit pooling/normalization metadata, writes the
+versioned manifest, validates every variant with ONNX Runtime, then promotes the output.
+Run `python -m fastretrieval.convert verify` before publishing. Local execution is the
+default; `--backend modal` is optional, and GGUF requires a built `llama.cpp` checkout.

@@ -18,13 +18,20 @@ _MISSING_EXPORT_DEPS = (
 )
 
 
-def export_to_onnx(model_id: str, output_dir: str, *, task: str = "feature-extraction") -> str:
+def export_to_onnx(
+    model_id: str,
+    output_dir: str,
+    *,
+    task: str = "feature-extraction",
+    opset: int = 21,
+) -> str:
     """Export an HF model + tokenizer to ONNX under ``output_dir``.
 
     Args:
         model_id: HuggingFace model id (e.g. ``"intfloat/multilingual-e5-base"``).
         output_dir: Directory to write ``onnx/model.onnx`` + tokenizer files.
         task: optimum export task; ``"feature-extraction"`` for embeddings.
+        opset: ONNX opset version used by the exporter.
 
     Returns:
         The ``output_dir`` path containing the exported model.
@@ -39,5 +46,5 @@ def export_to_onnx(model_id: str, output_dir: str, *, task: str = "feature-extra
         raise ImportError(_MISSING_EXPORT_DEPS) from e
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    main_export(model_id, output=output_dir, task=task)
+    main_export(model_id, output=output_dir, task=task, opset=opset)
     return output_dir

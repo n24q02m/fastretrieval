@@ -14,6 +14,7 @@ from fastretrieval.contract.preprocessor import PreprocessorSpec
 SCHEMA_VERSION = 1
 _REQUIRED_FIELDS = frozenset(
     {
+        "schema_version",
         "model_id",
         "source",
         "model_family",
@@ -50,21 +51,25 @@ def write_manifest(
         payload[key] = value
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        dir=destination.parent,
-        prefix=f".{destination.name}.",
-        suffix=".tmp",
-        delete=False,
-    ) as handle:
-        temporary = Path(handle.name)
-        json.dump(payload, handle, ensure_ascii=False, indent=2, sort_keys=True)
-        handle.write("\n")
+    temporary: Path | None = None
     try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            json.dump(payload, handle, ensure_ascii=False, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
         os.replace(temporary, destination)
     finally:
-        temporary.unlink(missing_ok=True)
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def load_manifest(path: Path) -> ModelContract:
@@ -80,10 +85,13 @@ def load_manifest(path: Path) -> ModelContract:
     missing = sorted(field for field in _REQUIRED_FIELDS if field not in payload)
     if missing:
         raise ValueError(f"{model_id}: manifest is missing {', '.join(missing)}")
-    if payload.get("schema_version", SCHEMA_VERSION) != SCHEMA_VERSION:
-        raise ValueError(
-            f"{model_id}: unsupported manifest schema_version {payload.get('schema_version')!r}"
-        )
+    schema_version = payload["schema_version"]
+    if not isinstance(schema_version, int) or isinstance(schema_version, bool):
+        raise ValueError(f"{model_id}: schema_version must be an integer")
+    if schema_version != SCHEMA_VERSION:
+        raise ValueError(f"{model_id}: unsupported manifest schema_version {schema_version!r}")
+
+    _validate_manifest_types(payload, model_id)
     try:
         preprocessor = PreprocessorSpec.from_dict(payload["preprocessor"])
         return ModelContract(
@@ -105,5 +113,56 @@ def load_manifest(path: Path) -> ModelContract:
             quantization=payload["quantization"],
             exporter_version=payload["exporter_version"],
         )
-    except (TypeError, ValueError, KeyError) as exc:
+    except (AttributeError, TypeError, ValueError, KeyError) as exc:
         raise ValueError(f"{model_id}: invalid manifest fields: {exc}") from exc
+
+
+def _validate_manifest_types(payload: dict[str, Any], model_id: Any) -> None:
+    """Validate JSON shapes before constructing ``ModelContract``.
+
+    The explicit checks keep malformed JSON from surfacing as an unrelated
+    ``AttributeError`` (for example ``None.strip()``) and reject booleans in
+    integer positions, where Python otherwise treats them as integers.
+    """
+
+    string_fields = (
+        "model_id",
+        "source",
+        "model_family",
+        "task",
+        "modality",
+        "pooling",
+    )
+    for field in string_fields:
+        if not isinstance(payload[field], str):
+            raise ValueError(f"{model_id}: manifest field {field} must be a string")
+
+    for field in ("output_dim", "max_seq_len"):
+        value = payload[field]
+        if value is not None and (not isinstance(value, int) or isinstance(value, bool)):
+            raise ValueError(f"{model_id}: manifest field {field} must be an integer or null")
+
+    output_shape = payload["output_shape"]
+    if output_shape is not None:
+        if not isinstance(output_shape, list):
+            raise ValueError(f"{model_id}: manifest field output_shape must be a list or null")
+        for value in output_shape:
+            if value is not None and (not isinstance(value, int) or isinstance(value, bool)):
+                raise ValueError(
+                    f"{model_id}: manifest output_shape values must be integers or null"
+                )
+
+    if not isinstance(payload["normalization"], bool):
+        raise ValueError(f"{model_id}: manifest field normalization must be boolean")
+
+    for field in ("tokenizer_files", "artifact_formats"):
+        value = payload[field]
+        if not isinstance(value, list) or any(
+            not isinstance(item, str) or not item for item in value
+        ):
+            raise ValueError(f"{model_id}: manifest field {field} must be a list of strings")
+
+    for field in ("quantization", "exporter_version"):
+        value = payload[field]
+        if value is not None and not isinstance(value, str):
+            raise ValueError(f"{model_id}: manifest field {field} must be a string or null")

@@ -152,3 +152,14 @@ Conventional Commits: `type(scope): message`. Automated semantic release via PSR
 
 1. Ruff lint (`--fix --target-version=py313`) + format
 2. pytest (`-m "not integration" --tb=short -q`)
+
+## Converter
+
+The optional conversion stack lives in `fastretrieval/convert/requirements.txt` and is
+not part of the runtime lock. Run it with `uv run --with-requirements ...`; do not add
+PyTorch, Optimum, or Transformers to the runtime dependencies just to make conversion
+convenient. The ONNX path requires explicit pooling and normalization metadata, writes
+the versioned contract manifest, validates every exported variant with ONNX Runtime,
+and only then promotes the artifact directory. `python -m fastretrieval.convert verify`
+must be run before publishing an artifact. `--backend modal` is optional; local is the
+default and GGUF additionally requires a built `llama.cpp` checkout.

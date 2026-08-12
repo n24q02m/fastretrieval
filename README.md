@@ -59,6 +59,7 @@ and keeps Qwen3 model names as model identifiers rather than as the package boun
 - [Supported Models](#supported-models)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Converting your own model](#converting-your-own-model)
 - [Configuration](#configuration)
 - [Migrating from qwen3-embed](#migrating-from-qwen3-embed)
 - [Development](#development)
@@ -240,6 +241,46 @@ from fastretrieval.export import export_to_onnx
 
 export_to_onnx("intfloat/multilingual-e5-base", "./e5-onnx")
 ```
+
+## Converting your own model
+
+`fastretrieval` does not ship a closed model zoo. Point the converter at a model
+family in the support matrix and it produces an artifact with a declarative
+contract manifest. Unsupported architectures fail closed instead of producing a
+misleading artifact.
+
+The conversion dependencies (`torch`, `transformers`, and `optimum`) are
+deliberately not runtime dependencies. Run conversion in a throwaway environment:
+
+```bash
+uv run --with-requirements fastretrieval/convert/requirements.txt \
+  python -m fastretrieval.convert onnx intfloat/multilingual-e5-base \
+  --out ./e5 --pooling mean --normalize
+
+uv run --with-requirements fastretrieval/convert/requirements.txt \
+  python -m fastretrieval.convert verify ./e5 \
+  --source intfloat/multilingual-e5-base
+```
+
+`verify` validates the manifest, loads every ONNX variant through ONNX Runtime,
+and compares the converted outputs with the original model on the same probes.
+The `card` command writes a model card only after the manifest and artifact
+formats pass validation. GGUF conversion additionally requires a built
+`llama.cpp` checkout and `--llama-cpp` (or `LLAMA_CPP_HOME`).
+
+Large models can run in the optional Modal backend. It mounts local sources and
+downloads the completed artifact back to the requested output directory; it does
+not publish to a model hub:
+
+```bash
+uv run --with-requirements fastretrieval/convert/requirements.txt \
+  python -m fastretrieval.convert onnx Qwen/Qwen3-Embedding-0.6B \
+  --out ./qwen3 --pooling last_token --normalize --backend modal
+```
+
+The first acceptance profiles are Qwen3 and BERT-family text models. Adding a
+model family requires its architecture, task, modality, pooling, normalization,
+and output-shape profile plus parity tests; the model name alone is never enough.
 
 ## Configuration
 
