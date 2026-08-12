@@ -81,4 +81,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.command is None:
         parser.print_help()
         return 2
-    raise NotImplementedError(f"command {args.command!r} is wired up in a later task")
+    if args.command == "onnx":
+        from fastretrieval.convert.onnx import convert_onnx
+
+        yes_no = (args.yes_token, args.no_token) if args.yes_no_head else None
+        sizes = convert_onnx(
+            args.source,
+            args.out,
+            task=args.task,
+            modality=args.modality,
+            variants=[variant.strip() for variant in args.variants.split(",") if variant.strip()],
+            pooling=args.pooling,
+            normalization=args.normalize,
+            yes_no=yes_no,
+        )
+        for name, megabytes in sizes.items():
+            print(f"{name}: {megabytes:.1f} MB")
+        return 0
+    raise AssertionError(f"unhandled command {args.command!r}")
