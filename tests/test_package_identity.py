@@ -8,6 +8,8 @@ def test_public_api_is_importable_under_new_name():
         "CustomModelSpec",
         "CustomRerankerSpec",
         "Device",
+        "SparseEmbedding",
+        "SparseTextEmbedding",
         "TextEmbedding",
         "TextCrossEncoder",
     ]
