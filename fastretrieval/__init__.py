@@ -16,8 +16,18 @@ __all__ = [
     "CustomModelSpec",
     "CustomRerankerSpec",
     "Device",
+    "ImageEmbedding",
     "SparseEmbedding",
     "SparseTextEmbedding",
     "TextEmbedding",
     "TextCrossEncoder",
 ]
+
+
+def __getattr__(name: str) -> object:
+    """Nạp capability ảnh lười để Pillow không trở thành core dependency."""
+    if name == "ImageEmbedding":
+        from fastretrieval.models.image import ImageEmbedding
+
+        return ImageEmbedding
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

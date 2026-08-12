@@ -4,6 +4,8 @@ Copyright 2025-2026 n24q02m
 This product includes software developed as part of fastembed
 (https://github.com/qdrant/fastembed), Copyright 2023 Qdrant,
 licensed under the Apache License, Version 2.0.
+The restored sparse and image modules were selected from qdrant/fastembed
+at commit 6fa442b9603cd197c4b8cf19f072b3b9bbaac9b0 (version 0.8.0).
 
 This product continues the work previously published as qwen3-embed
 (https://pypi.org/project/qwen3-embed/), Copyright 2025-2026 n24q02m,

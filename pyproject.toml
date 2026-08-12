@@ -35,6 +35,8 @@ dependencies = [
 
 [project.optional-dependencies]
 gguf = ["llama-cpp-python>=0.3.34"]
+image = ["pillow>=11.0.0,<13.0"]
+all = ["fastretrieval[gguf,image]"]
 
 [project.urls]
 Homepage = "https://github.com/n24q02m/fastretrieval"
