@@ -20,8 +20,7 @@ on:
           - stable
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 env:
   DOCKERHUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/fastretrieval
@@ -183,6 +182,9 @@ jobs:
     # The gate is only a gate if it runs BEFORE the push.
     needs: [readme-sync, release]
     if: needs.release.outputs.released == 'true' && vars.PUBLISH_DOCKER == 'true'
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -238,6 +240,9 @@ jobs:
     needs: [release, build-docker]
     if: needs.release.outputs.released == 'true' && vars.PUBLISH_DOCKER == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -315,6 +320,7 @@ jobs:
       && vars.PUBLISH_MCP_REGISTRY == 'true'
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       id-token: write
     steps:
       - name: Harden Runner
