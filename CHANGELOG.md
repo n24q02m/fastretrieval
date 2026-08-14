@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.0.1-beta.3 (2026-08-14)
+
+### Bug Fixes
+
+- Stage release lock updates
+  ([`6e8fac9`](https://github.com/n24q02m/fastretrieval/commit/6e8fac9725b74282873fdbc08e28f90f4b53882d))
+
+
 ## v1.0.1-beta.2 (2026-08-14)
 
 ### Bug Fixes
