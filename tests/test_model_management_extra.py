@@ -119,8 +119,8 @@ class TestModelManagementExtra:
         The error must name the *link* as an unsupported type, which is this
         package refusing the archive. On Python 3.11.4+ ``tarfile``'s own "data"
         filter would also stop this one, a step later and with a different
-        message -- but ``requires-python = ">=3.11"`` also admits 3.11.0-3.11.3,
-        where ``decompress_to_cache`` falls back to a manual loop with no such
+        message -- but supported Python versions without that filter make
+        ``decompress_to_cache`` fall back to a manual loop with no such
         backstop. That fallback is where the escape actually landed, so the
         refusal has to come from here rather than from the standard library.
 
