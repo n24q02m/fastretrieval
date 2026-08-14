@@ -70,6 +70,7 @@ tag_format = "v{version}"
 commit_message = "chore(release): v{version}"
 build_command = """
 uv lock --upgrade-package "$PACKAGE_NAME"
+git add uv.lock
 uv build
 """
 major_on_zero = false
