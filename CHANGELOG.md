@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.0.1-beta.2 (2026-08-14)
+
+### Bug Fixes
+
+- Keep release lock metadata current
+  ([`9593bf4`](https://github.com/n24q02m/fastretrieval/commit/9593bf470c3aba357c4b69819fb75357aa8f5fb0))
+
+
 ## v1.0.1-beta.1 (2026-08-14)
 
 ### Bug Fixes
