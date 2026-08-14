@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v1.0.1-beta.1 (2026-08-14)
+
+### Bug Fixes
+
+- Align Python 3.10 support documentation
+  ([`70537bc`](https://github.com/n24q02m/fastretrieval/commit/70537bc56c8577b8190c6589ff46b2720a4808de))
+
+- Support CPython 3.10 release parity
+  ([`47c9a1c`](https://github.com/n24q02m/fastretrieval/commit/47c9a1c4e469efbb5e56cea3de9b93b768b40f6e))
+
+
 ## v1.0.0-beta.1 (2026-08-13)
 
 - Initial Release
