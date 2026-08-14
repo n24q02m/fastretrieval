@@ -1,9 +1,10 @@
-from enum import StrEnum
 from pathlib import Path
 from typing import Any, TypeAlias
 
 import numpy as np
 from numpy.typing import NDArray
+
+from fastretrieval.common.compat import StrEnum
 
 
 class Device(StrEnum):

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
-from enum import StrEnum
 from typing import Any
+
+from fastretrieval.common.compat import StrEnum
 
 
 @dataclass(frozen=True)

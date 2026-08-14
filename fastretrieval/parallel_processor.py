@@ -3,7 +3,6 @@ import os
 from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass
-from enum import StrEnum
 from multiprocessing import Queue, get_context
 from multiprocessing.context import BaseContext
 from multiprocessing.process import BaseProcess
@@ -11,6 +10,7 @@ from multiprocessing.sharedctypes import Synchronized as BaseValue
 from queue import Empty
 from typing import Any
 
+from fastretrieval.common.compat import StrEnum
 from fastretrieval.common.types import Device
 
 # Single item should be processed in less than:

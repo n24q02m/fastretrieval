@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 authors = [{ name = "n24q02m" }]
 keywords = ["vector", "embedding", "reranking", "qwen3", "onnx", "onnxruntime"]
 classifiers = [
@@ -12,6 +12,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -20,7 +21,10 @@ classifiers = [
 ]
 
 dependencies = [
-    "numpy>=2.4.6,<2.5",
+    "numpy>=2.2.0,<2.5",
+    # ORT 1.24 dropped cp310 wheels; keep the last cp310-compatible line for
+    # Python 3.10 while newer interpreters use the current compatible release.
+    "onnxruntime>=1.23.2,<1.24; python_version == '3.10'",
     "onnxruntime>1.20.0; python_version >= '3.11'",
     "tqdm>=4.70.0",
     "requests>=2.34.2",
@@ -64,6 +68,10 @@ packages = ["fastretrieval"]
 version_toml = ["pyproject.toml:project.version"]
 tag_format = "v{version}"
 commit_message = "chore(release): v{version}"
+build_command = """
+uv lock --upgrade-package "$PACKAGE_NAME"
+uv build
+"""
 major_on_zero = false
 
 [tool.semantic_release.changelog]
@@ -88,7 +96,7 @@ call-non-callable = "warn"
 
 [tool.ruff]
 line-length = 99
-target-version = "py311"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

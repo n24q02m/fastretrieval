@@ -113,16 +113,21 @@ def quantize_q4f16(fp32_path: Path, out_path: Path) -> float:
     require_convert_deps("onnx", "onnxconverter_common", "onnxruntime", "onnx_ir")
     import onnx
     from onnxconverter_common import float16
-    from onnxruntime.quantization.matmul_nbits_quantizer import MatMulNBitsQuantizer
+    from onnxruntime.quantization.matmul_nbits_quantizer import (
+        DefaultWeightOnlyQuantConfig,
+        MatMulNBitsQuantizer,
+    )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     logger.info("quantizing to Q4F16: {}", out_path)
     quantizer = MatMulNBitsQuantizer(
         model=str(fp32_path),
-        bits=4,
-        block_size=128,
-        is_symmetric=True,
-        accuracy_level=4,
+        algo_config=DefaultWeightOnlyQuantConfig(
+            block_size=128,
+            is_symmetric=True,
+            accuracy_level=4,
+            bits=4,
+        ),
     )
     quantizer.process()
 

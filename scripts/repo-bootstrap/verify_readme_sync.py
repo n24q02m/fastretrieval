@@ -29,8 +29,9 @@ import argparse
 import json
 import re
 import sys
-import tomllib
 from pathlib import Path
+
+import tomllib
 
 if __package__ is None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))

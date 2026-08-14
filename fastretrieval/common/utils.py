@@ -5,7 +5,7 @@ import warnings
 from collections.abc import Iterable
 from itertools import islice
 from pathlib import Path
-from typing import TypeVar
+from typing import TypeVar, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -77,7 +77,10 @@ def last_token_pool(input_array: NumpyArray, attention_mask: NDArray[np.int64]) 
     """
     batch_size, seq_len = attention_mask.shape
     if seq_len == 0:
-        return np.zeros((batch_size,) + input_array.shape[2:], dtype=input_array.dtype)
+        return cast(
+            NumpyArray,
+            np.zeros((batch_size,) + input_array.shape[2:], dtype=input_array.dtype),
+        )
 
     # ⚡ Bolt: Fast path if all samples end with a valid token (e.g. left-padding or no padding)
     # Fast boolean reduction using .all() (~15% faster than .sum() == shape[0])

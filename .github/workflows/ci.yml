@@ -68,8 +68,12 @@ jobs:
   # Lint & Test (Python)
   # ============================================================================
   lint-and-test:
-    name: Lint & Test
+    name: Lint & Test (Python ${{ matrix.python }})
     if: github.event_name == 'pull_request' || github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
@@ -81,7 +85,7 @@ jobs:
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python }}
 
       - run: uv sync --locked --group dev
       - run: uv run ruff check .
@@ -91,7 +95,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           if [ -d "tests" ] && [ "$(ls -A tests/*.py 2>/dev/null)" ]; then
-            uv run pytest --tb=short --cov=fastretrieval --cov-report=xml
+            uv run pytest -m "not integration" --tb=short --cov=fastretrieval --cov-report=xml
           else
             echo "No tests found, skipping..."
           fi
