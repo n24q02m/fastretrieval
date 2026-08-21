@@ -234,7 +234,9 @@ class ParallelWorkerPool:
         pushed = 0
         read = 0
         for idx, item in enumerate(stream):
-            self.check_worker_health()
+            # ⚡ Bolt: Batch health checks to reduce OS sys call overhead (is_alive)
+            if idx % 100 == 0:
+                self.check_worker_health()
             if pushed - read < self.queue_size:
                 try:
                     out_item = self.output_queue.get_nowait()
