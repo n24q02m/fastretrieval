@@ -1,5 +1,6 @@
 import importlib.metadata
 
+from fastretrieval.common.utils import define_cache_dir
 from fastretrieval.common.custom_model import CustomModelSpec, CustomRerankerSpec
 from fastretrieval.common.types import Device
 from fastretrieval.models.late_interaction import LateInteractionTextEmbedding
@@ -18,6 +19,7 @@ __all__ = [
     "CustomModelSpec",
     "CustomRerankerSpec",
     "Device",
+    "define_cache_dir",
     "ImageEmbedding",
     "LateInteractionTextEmbedding",
     "LateInteractionMultimodalEmbedding",
