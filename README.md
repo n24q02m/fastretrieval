@@ -314,6 +314,20 @@ The `FASTRETRIEVAL_*` names take precedence when both names are set. The depreca
 `QWEN3_EMBED_*` names remain readable and emit a `DeprecationWarning` so existing
 configurations do not silently stop working.
 
+### Programmatic cache location
+
+Consumers that need to inspect or clear the model cache should use the public
+helper instead of importing an internal module:
+
+```python
+from fastretrieval import define_cache_dir
+
+cache_dir = define_cache_dir()
+```
+
+`define_cache_dir()` honors `FASTRETRIEVAL_CACHE_PATH` first and the deprecated
+`QWEN3_EMBED_CACHE_PATH` alias second. An explicit path argument overrides both.
+
 ### GPU Acceleration
 
 Both ONNX and GGUF backends auto-detect GPU when available (`Device.AUTO` is the default).

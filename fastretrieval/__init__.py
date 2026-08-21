@@ -1,8 +1,8 @@
 import importlib.metadata
 
-from fastretrieval.common.utils import define_cache_dir
 from fastretrieval.common.custom_model import CustomModelSpec, CustomRerankerSpec
 from fastretrieval.common.types import Device
+from fastretrieval.common.utils import define_cache_dir
 from fastretrieval.models.late_interaction import LateInteractionTextEmbedding
 from fastretrieval.models.late_interaction_multimodal import LateInteractionMultimodalEmbedding
 from fastretrieval.models.sparse import SparseEmbedding, SparseTextEmbedding

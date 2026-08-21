@@ -18,6 +18,7 @@ def test_public_api_is_importable_under_new_name():
         "TextCrossEncoder",
     ]
 
+
 def test_cache_dir_is_public_api():
     from fastretrieval import define_cache_dir
 
