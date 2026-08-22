@@ -2,6 +2,29 @@
 
 <!-- version list -->
 
+## v1.1.0-beta.1 (2026-08-22)
+
+### Bug Fixes
+
+- **convert**: Keep Python 3.10 resolver compatibility
+  ([#4](https://github.com/n24q02m/fastretrieval/pull/4),
+  [`a840f76`](https://github.com/n24q02m/fastretrieval/commit/a840f7693735c76d58dee0017110070f6019d738))
+
+- **deps**: Update minor dependencies ([#4](https://github.com/n24q02m/fastretrieval/pull/4),
+  [`a840f76`](https://github.com/n24q02m/fastretrieval/commit/a840f7693735c76d58dee0017110070f6019d738))
+
+### Features
+
+- Document public cache API ([#9](https://github.com/n24q02m/fastretrieval/pull/9),
+  [`0f9a856`](https://github.com/n24q02m/fastretrieval/commit/0f9a8567470db448820132c2e246bae1cdbb4d84))
+
+- Expose cache directory API ([#9](https://github.com/n24q02m/fastretrieval/pull/9),
+  [`0f9a856`](https://github.com/n24q02m/fastretrieval/commit/0f9a8567470db448820132c2e246bae1cdbb4d84))
+
+- Expose public cache directory API ([#9](https://github.com/n24q02m/fastretrieval/pull/9),
+  [`0f9a856`](https://github.com/n24q02m/fastretrieval/commit/0f9a8567470db448820132c2e246bae1cdbb4d84))
+
+
 ## v1.0.1 (2026-08-14)
 
 
