@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "numpy>=2.2.0,<2.5",
+    "numpy>=2.4.6,<2.5",
     # ORT 1.24 dropped cp310 wheels; keep the last cp310-compatible line for
     # Python 3.10 while newer interpreters use the current compatible release.
     "onnxruntime>=1.23.2,<1.24; python_version == '3.10'",
@@ -39,7 +39,7 @@ dependencies = [
 
 [project.optional-dependencies]
 gguf = ["llama-cpp-python>=0.3.34"]
-image = ["pillow>=11.0.0,<13.0"]
+image = ["pillow>=11.3.0,<13.0"]
 all = ["fastretrieval[gguf,image]"]
 
 [project.urls]
@@ -53,8 +53,8 @@ dev = [
     "pytest-xdist>=3.8.0",
     "pytest-timeout>=2.4.0",
     "syrupy>=5.5.3",
-    "ruff>=0.16.1",
-    "ty>=0.0.65",
+    "ruff>=0.16.3",
+    "ty>=0.0.72",
 ]
 
 [build-system]
