@@ -1,0 +1,3 @@
+## 2024-05-18 - Avoid process.is_alive() in tight loops
+**Learning:** Checking `process.is_alive()` followed by `process.exitcode != 0` inside a tight multiprocessing polling loop in Python introduces significant overhead. This is because `is_alive()` performs multiple system calls (`wait` with timeout 0) under the hood on some Python versions or requires slow synchronizations.
+**Action:** Use `process.exitcode not in (None, 0)` instead of `not process.is_alive() and process.exitcode != 0`. The `exitcode` property is lightweight and avoids expensive `is_alive()` overhead when polled frequently.
