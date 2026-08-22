@@ -8,6 +8,7 @@ def test_public_api_is_importable_under_new_name():
         "CustomModelSpec",
         "CustomRerankerSpec",
         "Device",
+        "define_cache_dir",
         "ImageEmbedding",
         "LateInteractionTextEmbedding",
         "LateInteractionMultimodalEmbedding",
@@ -16,6 +17,12 @@ def test_public_api_is_importable_under_new_name():
         "TextEmbedding",
         "TextCrossEncoder",
     ]
+
+
+def test_cache_dir_is_public_api():
+    from fastretrieval import define_cache_dir
+
+    assert callable(define_cache_dir)
 
 
 def test_distribution_name_is_fastretrieval():
