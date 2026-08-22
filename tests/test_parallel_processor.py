@@ -580,6 +580,7 @@ def test_process_stream_error_signal():
     pool = ParallelWorkerPool(worker=SquareWorker, config=PoolConfig(num_workers=1))
     pool.input_queue = MagicMock()
     pool.output_queue = MagicMock()
+    pool.output_queue.empty.return_value = False
     pool.output_queue.get_nowait.return_value = QueueSignals.error
     pool.join_or_terminate = MagicMock()  # type: ignore[assignment]
     pool.check_worker_health = MagicMock()  # type: ignore[assignment]
