@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass
@@ -230,11 +231,17 @@ class ParallelWorkerPool:
         assert self.output_queue is not None, "Output queue was not initialized"
 
         self.check_worker_health()
+        last_health_check = time.monotonic()
 
         pushed = 0
         read = 0
         for idx, item in enumerate(stream):
-            self.check_worker_health()
+            now = time.monotonic()
+            # ⚡ Bolt: Throttled check_worker_health to run at most once every 100ms
+            # to significantly reduce overhead when processing high-throughput streams.
+            if now - last_health_check > 0.1:
+                self.check_worker_health()
+                last_health_check = now
             if pushed - read < self.queue_size:
                 try:
                     out_item = self.output_queue.get_nowait()
@@ -261,7 +268,12 @@ class ParallelWorkerPool:
             self.input_queue.put(QueueSignals.stop)
 
         while read < pushed:
-            self.check_worker_health()
+            now = time.monotonic()
+            # ⚡ Bolt: Throttled check_worker_health to run at most once every 100ms
+            # to significantly reduce overhead when processing high-throughput streams.
+            if now - last_health_check > 0.1:
+                self.check_worker_health()
+                last_health_check = now
             out_item = self.output_queue.get(timeout=processing_timeout)
             if out_item == QueueSignals.error:
                 self.join_or_terminate()
