@@ -19,6 +19,9 @@ processing_timeout = 10 * 60  # seconds
 max_internal_batch_size = 200
 
 
+HEALTH_CHECK_INTERVAL = 100
+
+
 class QueueSignals(StrEnum):
     stop = "stop"
     confirm = "confirm"
@@ -234,7 +237,8 @@ class ParallelWorkerPool:
         pushed = 0
         read = 0
         for idx, item in enumerate(stream):
-            self.check_worker_health()
+            if idx % HEALTH_CHECK_INTERVAL == 0:
+                self.check_worker_health()
             if pushed - read < self.queue_size:
                 try:
                     out_item = self.output_queue.get_nowait()
