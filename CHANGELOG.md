@@ -2,6 +2,51 @@
 
 <!-- version list -->
 
+## v1.1.0-beta.2 (2026-08-24)
+
+### Bug Fixes
+
+- Pin CI runtime actions ([#14](https://github.com/n24q02m/fastretrieval/pull/14),
+  [`fe8096c`](https://github.com/n24q02m/fastretrieval/commit/fe8096cbe4f8478f0bb46ebbbc55ecdaafb509fd))
+
+- Preserve Python 3.10 inference support ([#16](https://github.com/n24q02m/fastretrieval/pull/16),
+  [`bf1d93b`](https://github.com/n24q02m/fastretrieval/commit/bf1d93bd52e87582033b0753cac9bcefb8d07112))
+
+- Preserve supported NumPy range ([#15](https://github.com/n24q02m/fastretrieval/pull/15),
+  [`304f8aa`](https://github.com/n24q02m/fastretrieval/commit/304f8aa9e93c1aca9233d4c8b5bf2833077ad116))
+
+- Throttle worker health checks to significantly speed up parallel processing
+  ([#19](https://github.com/n24q02m/fastretrieval/pull/19),
+  [`5736d6a`](https://github.com/n24q02m/fastretrieval/commit/5736d6af6270892869e9a8e17ee98ea8161ecc83))
+
+- **deps**: Update ghcr.io/astral-sh/uv:latest Docker digest to e85be84
+  ([#2](https://github.com/n24q02m/fastretrieval/pull/2),
+  [`35054d4`](https://github.com/n24q02m/fastretrieval/commit/35054d4507aef22ee09ab799af57c5f8fbe1c767))
+
+- **deps**: Update github/codeql-action action to v4
+  ([#18](https://github.com/n24q02m/fastretrieval/pull/18),
+  [`5e0ebce`](https://github.com/n24q02m/fastretrieval/commit/5e0ebcee0ce132d7ca981157328db210e3854851))
+
+- **deps**: Update minor dependencies ([#16](https://github.com/n24q02m/fastretrieval/pull/16),
+  [`bf1d93b`](https://github.com/n24q02m/fastretrieval/commit/bf1d93bd52e87582033b0753cac9bcefb8d07112))
+
+- **deps**: Update patch dependencies ([#15](https://github.com/n24q02m/fastretrieval/pull/15),
+  [`304f8aa`](https://github.com/n24q02m/fastretrieval/commit/304f8aa9e93c1aca9233d4c8b5bf2833077ad116))
+
+- **perf**: Throttle worker health checks ([#19](https://github.com/n24q02m/fastretrieval/pull/19),
+  [`5736d6a`](https://github.com/n24q02m/fastretrieval/commit/5736d6af6270892869e9a8e17ee98ea8161ecc83))
+
+### Performance Improvements
+
+- Throttle worker health checks in parallel processor
+  ([#19](https://github.com/n24q02m/fastretrieval/pull/19),
+  [`5736d6a`](https://github.com/n24q02m/fastretrieval/commit/5736d6af6270892869e9a8e17ee98ea8161ecc83))
+
+- Throttle worker health checks to significantly speed up parallel processing
+  ([#19](https://github.com/n24q02m/fastretrieval/pull/19),
+  [`5736d6a`](https://github.com/n24q02m/fastretrieval/commit/5736d6af6270892869e9a8e17ee98ea8161ecc83))
+
+
 ## v1.1.0-beta.1 (2026-08-22)
 
 ### Bug Fixes
