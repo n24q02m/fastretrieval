@@ -33,7 +33,7 @@ dependencies = [
     # Keep it low so fastretrieval stays co-installable with transformers and other
     # tokenizers consumers (e.g. transformers 5.10.x caps tokenizers<=0.23.0). See #691.
     "tokenizers>=0.23.1,<1.0",
-    "huggingface-hub>=1.27.0,<2.0",
+    "huggingface-hub>=1.28.0,<2.0",
     "loguru>=0.7.3",
 ]
 
