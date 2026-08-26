@@ -4,7 +4,7 @@ version = "1.1.0-beta.2"
 description = "Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{ name = "n24q02m" }]
 keywords = ["vector", "embedding", "reranking", "qwen3", "onnx", "onnxruntime"]
 classifiers = [
