@@ -4,7 +4,7 @@ optimum-onnx[onnxruntime]>=0.1.0
 onnx>=1.22.0
 onnxruntime[quantization]>=1.23.2,<1.24; python_version < "3.11"
 onnxruntime[quantization]>=1.29.0; python_version >= "3.11"
-onnx-ir>=0.2.1
+onnx-ir>=1.0.0
 onnxconverter-common>=1.16.0
 huggingface-hub>=0.36.2
 gguf>=0.19.0
