@@ -52,7 +52,7 @@ uses a declarative model contract so built-in Qwen3 reference models and custom 
 share the same runtime, and supports Matryoshka (MRL) truncation, instruction-aware queries,
 and optional GPU acceleration. It is derived from [fastembed](https://github.com/qdrant/fastembed)
 and keeps Qwen3 model names as model identifiers rather than as the package boundary.
-Supported runtimes are CPython 3.10, 3.11, 3.12, 3.13, and 3.14.
+Supported runtimes are CPython 3.11, 3.12, 3.13, and 3.14.
 
 ## What it does
 
