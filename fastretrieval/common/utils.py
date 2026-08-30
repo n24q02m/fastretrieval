@@ -125,8 +125,9 @@ def mean_pooling(input_array: NumpyArray, attention_mask: NDArray[np.int64]) -> 
     sum_embeddings = np.matmul(mask_cast[:, np.newaxis, :], input_array).squeeze(1)
     # ⚡ Bolt: Fast reduction using original integer array sum before casting to float (~4x faster)
     sum_mask = attention_mask.sum(axis=1, keepdims=True).astype(input_array.dtype, copy=False)
-    # ⚡ Bolt: Fast in-place division to avoid allocating new array (~20% faster)
-    sum_embeddings /= np.maximum(sum_mask, 1e-9)
+    # ⚡ Bolt: Fast in-place maximum and division to avoid intermediate array allocations
+    np.maximum(sum_mask, 1e-9, out=sum_mask)
+    sum_embeddings /= sum_mask
     return sum_embeddings
 
 
