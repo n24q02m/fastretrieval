@@ -88,6 +88,36 @@ def test_unknown_architecture_fails_closed_with_context(tmp_path: Path):
         resolve_profile(source, task="dense", modality="text")
 
 
+def test_external_unknown_architecture_fails_closed(monkeypatch, tmp_path: Path):
+    config_path = tmp_path / "external-config.json"
+    config_path.write_text(
+        json.dumps({"model_type": "unknown_external_architecture", "hidden_size": 384}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "huggingface_hub.hf_hub_download",
+        lambda *, repo_id, filename: str(config_path),
+    )
+
+    with pytest.raises(ValueError, match="outside support matrix"):
+        resolve_profile("acme/unknown-external", task="dense", modality="text")
+
+
+def test_cross_encoder_profile_builds_explicit_output_contract():
+    profile = resolve_profile(FIXTURES / "tiny-e5", task="text-classification", modality="text")
+
+    contract = profile.build_contract(
+        pooling="mean",
+        normalization=False,
+        output_dim=1,
+        artifact_formats=("onnx",),
+    )
+
+    assert contract.task == "cross_encoder"
+    assert contract.output_dim == 1
+    assert contract.output_shape == (1,)
+
+
 def test_unsupported_modality_fails_closed_with_context():
     source = FIXTURES / "tiny-e5"
 
