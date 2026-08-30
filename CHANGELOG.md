@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## Unreleased
+
+### Breaking Changes
+
+- Require CPython 3.11 or newer and remove the obsolete Python 3.10
+  classifier and dependency branch.
+
+- Rename the distribution and import package to `fastretrieval`; the legacy
+  `QWEN3_EMBED_*` environment variables remain supported as deprecated aliases.
+
+### Features
+
+- Add the Fastretrieval successor package identity and documentation for its
+  multi-model retrieval contract.
+
 ## v1.1.0-beta.2 (2026-08-24)
 
 ### Bug Fixes
@@ -103,18 +118,6 @@
 ## v1.0.0-beta.1 (2026-08-13)
 
 - Initial Release
-
-## Unreleased
-
-### Breaking Changes
-
-- Rename the distribution and import package to `fastretrieval`; the legacy
-  `QWEN3_EMBED_*` environment variables remain supported as deprecated aliases.
-
-### Features
-
-- Add the Fastretrieval successor package identity and documentation for its
-  multi-model retrieval contract.
 
 ## v1.13.0 (2026-08-08)
 
