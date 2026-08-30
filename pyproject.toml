@@ -12,7 +12,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -22,9 +21,6 @@ classifiers = [
 
 dependencies = [
     "numpy>=2.4.6,<2.5",
-    # ORT 1.24 dropped cp310 wheels; keep the last cp310-compatible line for
-    # Python 3.10 while newer interpreters use the current compatible release.
-    "onnxruntime>=1.29.0,<1.30; python_version == '3.10'",
     "onnxruntime>1.20.0; python_version >= '3.11'",
     "tqdm>=4.70.0",
     "requests>=2.34.2",
@@ -97,7 +93,7 @@ call-non-callable = "warn"
 
 [tool.ruff]
 line-length = 99
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
