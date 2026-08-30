@@ -60,6 +60,14 @@ def test_qwen_reference_uses_the_same_manifest_code_path(tmp_path: Path):
     assert contract.to_custom_model_spec_kwargs(hf="mirror/qwen3")["hf"] == "mirror/qwen3"
 
 
+def test_manifest_rejects_mismatched_embedding_dimension(tmp_path: Path):
+    payload = _payload("acme/mismatched-dimension")
+    payload["output_shape"] = [385]
+
+    with pytest.raises(ValueError, match="output_dim disagrees with output_shape"):
+        ModelContract.from_manifest(_write_manifest(tmp_path, payload))
+
+
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     [
