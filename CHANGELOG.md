@@ -2,6 +2,44 @@
 
 <!-- version list -->
 
+## v1.2.0-beta.1 (2026-08-31)
+
+### Bug Fixes
+
+- Align Python release metadata ([#41](https://github.com/n24q02m/fastretrieval/pull/41),
+  [`67da9d0`](https://github.com/n24q02m/fastretrieval/commit/67da9d03efb0588ae99e6cc69fdc3461a865e1da))
+
+- Align runtime support documentation ([#40](https://github.com/n24q02m/fastretrieval/pull/40),
+  [`b3efbfa`](https://github.com/n24q02m/fastretrieval/commit/b3efbfaf9b31e38269c0af9f67933418e5011421))
+
+- Reduce SPLADE token buffer copies
+  ([`319ba37`](https://github.com/n24q02m/fastretrieval/commit/319ba3745c668875bfea890eab729f8798022e98))
+
+- **deps**: Bump better-semantic-release to v1.5.0
+  ([`c9db7ad`](https://github.com/n24q02m/fastretrieval/commit/c9db7ad446f0ea23f86db45dfff6727b38b456c5))
+
+- **deps**: Refresh lock file
+  ([`f018f12`](https://github.com/n24q02m/fastretrieval/commit/f018f12741d395c525c5d2efaeb2d70acc63bdab))
+
+- **deps**: Update python Docker digest
+  ([`9e9753b`](https://github.com/n24q02m/fastretrieval/commit/9e9753bbe7396cdb60e03f53e10444efe25563be))
+
+### Features
+
+- Optimize mean_pooling to avoid redundant array allocations
+  ([#42](https://github.com/n24q02m/fastretrieval/pull/42),
+  [`31d8ee6`](https://github.com/n24q02m/fastretrieval/commit/31d8ee60c381889439f4a77597a5421716675dc8))
+
+- Optimize splade reduction by applying log1p after sequence pooling
+  ([`319ba37`](https://github.com/n24q02m/fastretrieval/commit/319ba3745c668875bfea890eab729f8798022e98))
+
+### Testing
+
+- **contract**: Cover foundation model resolution contracts
+  ([#39](https://github.com/n24q02m/fastretrieval/pull/39),
+  [`1926ffc`](https://github.com/n24q02m/fastretrieval/commit/1926ffcc1ce5a5e822965570d2f6cc898e926095))
+
+
 ## Unreleased
 
 ### Breaking Changes
