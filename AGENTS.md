@@ -1,6 +1,6 @@
 # AGENTS.md - fastretrieval
 
-Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract. Python 3.10-3.14, uv.
+Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract. Python 3.11-3.14, uv.
 
 ## Package Identity
 
@@ -48,7 +48,7 @@ mise run fix       # ruff check --fix + ruff format
 - `testpaths = ["tests"]`, `pythonpath = ["."]`
 - Integration marker: `@pytest.mark.integration` (requires model downloads: ONNX ~1.2 GB, Q4F16 ~1 GB, GGUF ~756 MB)
 - Integration test files: `test_integration.py` (ONNX), `test_integration_q4f16.py`, `test_integration_gguf.py`
-- CI runs: `uv run pytest -m "not integration" --tb=short` on CPython 3.10-3.14.
+- CI runs: `uv run pytest -m "not integration" --tb=short` on CPython 3.11-3.14.
 
 ## Code Style
 
@@ -57,7 +57,7 @@ mise run fix       # ruff check --fix + ruff format
 - **Line length**: 99
 - **Quotes**: Double quotes
 - **Indent**: 4 spaces
-- **Target**: Python 3.10
+- **Target**: Python 3.11
 
 ### Ruff Rules
 
@@ -93,8 +93,8 @@ from fastretrieval.common.types import PathInput, Device
 
 - Full type hints everywhere: parameters, return types, variables
 - Built-in generics: `list[str]` and `dict[str, Any]`
-- Union syntax: `str | None` (Python 3.10+)
-- Do not introduce syntax or standard-library APIs newer than Python 3.10.
+- Union syntax: `str | None` (Python 3.11+ support baseline)
+- Do not introduce syntax or standard-library APIs newer than Python 3.11.
 - `py.typed` marker file present
 
 ### Naming Conventions
@@ -160,7 +160,7 @@ Conventional Commits: `type(scope): message`. Automated semantic release via PSR
 
 ### Pre-commit Hooks
 
-1. Ruff lint (`--fix --target-version=py313`) + format
+1. Ruff lint (`--fix --target-version=py311`) + format
 2. pytest (`-m "not integration" --tb=short -q`)
 
 ## Converter

@@ -1,6 +1,6 @@
 """Shared utilities for repo-bootstrap scripts.
 
-Pure stdlib only (Python 3.10+). No external dependencies.
+Pure stdlib only (Python 3.11+). No external dependencies.
 """
 
 from __future__ import annotations

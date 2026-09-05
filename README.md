@@ -83,20 +83,31 @@ Supported runtimes are CPython 3.11, 3.12, 3.13, and 3.14.
 
 ## Features
 
-- **Last-token pooling**: Uses the final token representation (with left-padding) instead of mean pooling.
-- **MRL support**: Matryoshka Representation Learning allows truncating embeddings to any dimension from 32 to 1024 while preserving quality.
+- **Model-specific pooling**: Built-in Qwen3 text models use last-token pooling; other models use their declared preprocessing and pooling contract.
+- **MRL support**: Qwen3 reference embeddings support truncation from 32 to 1024 dimensions before L2 normalization.
 - **Instruction-aware**: Query embedding supports task instructions for better retrieval performance.
-- **Causal LM reranking**: Reranker uses yes/no logit scoring via causal language model, producing calibrated [0, 1] scores.
-- **Multiple backends**: ONNX Runtime (INT8, Q4F16) and GGUF (Q4_K_M via llama-cpp-python).
+- **Causal LM reranking**: Qwen3 rerankers use yes/no logit scoring, producing [0, 1] scores.
+- **Multiple backends**: ONNX Runtime and optional GGUF via llama-cpp-python; available formats depend on the selected model.
 - **GPU optional, no PyTorch**: Runs on ONNX Runtime or llama-cpp-python -- no heavy ML framework required. Auto-detects GPU (CUDA, DirectML) when available.
 - **Multilingual**: Built-in Qwen3 reference models support multi-language inputs.
 
 ## Supported Models
 
-The entries below are the built-in Qwen3 reference models. Other model families can be
-registered through the declarative model contract.
+The public facades have independent registries. `TextEmbedding()` selects
+`n24q02m/Qwen3-Embedding-0.6B-ONNX` (INT8, 1024 dimensions); every other facade
+requires an explicit `model_name`. A registry's first entry is not an implicit default.
+Qwen3 models are reference models, not a restriction on supported model families.
 
-### ONNX (default)
+| Facade | Default selection | Built-in capability |
+|:-------|:------------------|:--------------------|
+| `TextEmbedding` | Qwen3-Embedding-0.6B-ONNX | Dense text, ONNX or GGUF |
+| `TextCrossEncoder` | None; explicit model required | Qwen3 reranking, ONNX or GGUF |
+| `SparseTextEmbedding` | None; explicit model required | SPLADE sparse text |
+| `LateInteractionTextEmbedding` | None; explicit model required | ColBERT token vectors |
+| `ImageEmbedding` | None; explicit model required | Image vectors (`image` extra) |
+| `LateInteractionMultimodalEmbedding` | None; explicit model required | ColPali text/image token vectors (`image` extra) |
+
+### Qwen3 ONNX reference models
 
 | Model | Type | Dims | Max Tokens | Size |
 |:------|:-----|:-----|:-----------|:-----|
@@ -106,12 +117,33 @@ registered through the declarative model contract.
 | `n24q02m/Qwen3-Reranker-0.6B-ONNX-Q4F16` | Reranker | - | 40960 | 518 MB |
 | `n24q02m/Qwen3-Reranker-0.6B-ONNX-YesNo` | Reranker | - | 40960 | 598 MB |
 
-### GGUF (optional, requires `llama-cpp-python`)
+### Qwen3 GGUF reference models (requires the `gguf` extra)
 
 | Model | Type | Dims | Max Tokens | Size |
 |:------|:-----|:-----|:-----------|:-----|
 | `n24q02m/Qwen3-Embedding-0.6B-GGUF` | Embedding | 32-1024 (MRL) | 32768 | 378 MB |
 | `n24q02m/Qwen3-Reranker-0.6B-GGUF` | Reranker | - | 40960 | 378 MB |
+
+### Other built-in ONNX models
+
+| Facade | Model | Output size |
+|:-------|:------|:------------|
+| `SparseTextEmbedding` | `prithivida/Splade_PP_en_v1` | Sparse vocabulary: 30522 |
+| `LateInteractionTextEmbedding` | `colbert-ir/colbertv2.0` | 128 per token |
+| `LateInteractionTextEmbedding` | `answerdotai/answerai-colbert-small-v1` | 96 per token |
+| `ImageEmbedding` | `Qdrant/clip-ViT-B-32-vision` | 512 |
+| `ImageEmbedding` | `Qdrant/resnet50-onnx` | 2048 |
+| `ImageEmbedding` | `Qdrant/Unicom-ViT-B-16` | 768 |
+| `ImageEmbedding` | `Qdrant/Unicom-ViT-B-32` | 512 |
+| `ImageEmbedding` | `jinaai/jina-clip-v1` | 768 |
+| `LateInteractionMultimodalEmbedding` | `Qdrant/colpali-v1.3-fp16` | 128 per token |
+
+The sparse registry also reports the deprecated misspelling
+`prithvida/Splade_PP_en_v1`; use the canonical `prithivida` spelling above.
+Call each facade's `list_supported_models()` for its installed registry metadata
+without loading model weights. Register additional dense and reranker models with
+`CustomModelSpec` / `CustomRerankerSpec` and the declarative `fastretrieval.contract`
+API; custom registration does not change the facade defaults.
 
 ### HuggingFace Repos
 
