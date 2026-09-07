@@ -78,3 +78,20 @@ def test_download_artifact_rejects_path_traversal(tmp_path: Path):
 
     with pytest.raises(ValueError, match="unsafe artifact path"):
         asyncio.run(_download_artifact(volume, "/mnt/output/artifact", tmp_path / "out"))
+
+
+def test_download_artifact_rejects_absolute_path_traversal(tmp_path: Path):
+    volume = _AsyncVolume({"/mnt/output/artifact//etc/passwd": b"bad"})
+
+    with pytest.raises(ValueError, match="unsafe artifact path"):
+        asyncio.run(_download_artifact(volume, "/mnt/output/artifact", tmp_path / "out"))
+
+
+def test_rewrite_result_rejects_absolute_path_traversal():
+    from fastretrieval.convert.modal_backend import _rewrite_result
+
+    remote_result = {"path": "/mnt/output/artifact//etc/shadow"}
+    rewritten = _rewrite_result(remote_result, "/mnt/output/artifact", Path("/safe/output"))
+    # If the relative part starts with "/", _rewrite_result should ignore it and return the original dictionary unchanged.
+    assert rewritten == remote_result
+    assert rewritten["path"] == "/mnt/output/artifact//etc/shadow"
