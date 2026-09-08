@@ -93,7 +93,7 @@
       "allowedVersions": ">=10.0.0"
     },
     {
-      "description": "Disable Python runtime updates (library supports 3.10-3.14)",
+      "description": "Disable Python runtime updates (library supports 3.11-3.14)",
       "matchPackageNames": [
         "python"
       ],

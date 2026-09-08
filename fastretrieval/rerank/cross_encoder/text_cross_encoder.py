@@ -6,11 +6,17 @@ from fastretrieval.common.model_description import (
     BaseModelDescription,
 )
 from fastretrieval.common.types import Device, OnnxProvider
-from fastretrieval.rerank.cross_encoder.custom_text_cross_encoder import CustomTextCrossEncoder
+from fastretrieval.rerank.cross_encoder.custom_text_cross_encoder import (
+    CustomTextCrossEncoder,
+)
 from fastretrieval.rerank.cross_encoder.gguf_cross_encoder import Qwen3CrossEncoderGGUF
-from fastretrieval.rerank.cross_encoder.onnx_text_cross_encoder import OnnxTextCrossEncoder
+from fastretrieval.rerank.cross_encoder.onnx_text_cross_encoder import (
+    OnnxTextCrossEncoder,
+)
 from fastretrieval.rerank.cross_encoder.qwen3_cross_encoder import Qwen3CrossEncoder
-from fastretrieval.rerank.cross_encoder.text_cross_encoder_base import TextCrossEncoderBase
+from fastretrieval.rerank.cross_encoder.text_cross_encoder_base import (
+    TextCrossEncoderBase,
+)
 
 
 class TextCrossEncoder(TextCrossEncoderBase):
@@ -44,26 +50,13 @@ class TextCrossEncoder(TextCrossEncoderBase):
 
     @classmethod
     def list_supported_models(cls) -> list[dict[str, Any]]:
-        """Lists the supported models.
+        """List built-in and registered custom reranker metadata.
+
+        This inventory does not choose a default model; the constructor requires
+        an explicit ``model_name``.
 
         Returns:
-            list[BaseModelDescription]: A list of dictionaries containing the model information.
-
-            Example:
-                ```
-                [
-                    {
-                        "model": "Xenova/ms-marco-MiniLM-L-6-v2",
-                        "size_in_GB": 0.08,
-                        "sources": {
-                            "hf": "Xenova/ms-marco-MiniLM-L-6-v2",
-                        },
-                        "model_file": "onnx/model.onnx",
-                        "description": "MiniLM-L-6-v2 model optimized for re-ranking tasks.",
-                        "license": "apache-2.0",
-                    }
-                ]
-                ```
+            list[dict[str, Any]]: Model names, artifact sources, and metadata.
         """
         return [asdict(model) for model in cls._list_supported_models()]
 
@@ -159,11 +152,9 @@ class TextCrossEncoder(TextCrossEncoderBase):
             Higher scores indicate a stronger match between the query and the document.
 
         Example:
-            >>> encoder = TextCrossEncoder("Xenova/ms-marco-MiniLM-L-6-v2")
+            >>> encoder = TextCrossEncoder("n24q02m/Qwen3-Reranker-0.6B-ONNX-YesNo")
             >>> pairs = [("What is AI?", "Artificial intelligence is ..."), ("What is ML?", "Machine learning is ...")]
             >>> scores = list(encoder.rerank_pairs(pairs))
-            >>> print(list(map(lambda x: round(x, 2), scores)))
-            [-1.24, -10.6]
         """
         from fastretrieval.common.utils import check_input_length
 

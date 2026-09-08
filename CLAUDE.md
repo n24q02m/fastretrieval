@@ -1,7 +1,7 @@
 # CLAUDE.md - fastretrieval
 
 Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract.
-Python 3.10-3.14 (strict support contract), uv, hatchling. KHONG phai src layout -- package tai `fastretrieval/`.
+Python 3.11-3.14 (strict support contract), uv, hatchling. KHONG phai src layout -- package tai `fastretrieval/`.
 Derived from fastembed (Qdrant), voi Qwen3 adapters la built-in reference models; custom model
 contracts mo rong ra ngoai family nay. License: Apache-2.0.
 
@@ -92,7 +92,7 @@ tests/
 
 - Ruff: line-length 99 (khac 88 cua cac project khac), double quotes
 - Rules: `["E", "F", "I", "UP", "B", "SIM"]` (co SIM, khong co W, C4)
-- Python 3.10+ syntax: `str | Path`, built-in generic types; do not use 3.12-only syntax.
+- Python 3.11+ syntax: `str | Path`, built-in generic types; do not use 3.12-only syntax.
 - ty: nhieu rules o muc `warn` (khong phai ignore) vi optional deps va incomplete stubs
 - Error handling: ValueError, PermissionError, `raise ... from e`, `warnings.warn()`
 - Logging: `loguru` (tru `parallel_processor.py` dung stdlib logging)
@@ -104,7 +104,7 @@ PSR v10 (workflow_dispatch) -> PyPI. Dockerfile cung cap stdio/http targets.
 ## Luu y
 
 - KHONG phai src layout: package truc tiep tai `fastretrieval/`, khong phai `src/fastretrieval/`.
-- `requires-python = ">=3.10"` -- strict support for CPython 3.10-3.14.
+- `requires-python = ">=3.11"` -- strict support for CPython 3.11-3.14.
 - Optional extras: `fastretrieval[image]` adds image and ColPali support; `fastretrieval[all]`
   includes image and GGUF support; `fastretrieval[gguf]` installs only llama-cpp-python.
 - GPU auto-detect: ONNX (onnxruntime-gpu/directml), GGUF (llama-cpp-python CUDA build).
