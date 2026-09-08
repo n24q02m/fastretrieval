@@ -93,7 +93,10 @@ async def _download_artifact(volume: Any, remote_root: str, output_dir: Path) ->
         prefix = f"{root}/"
         if not remote_path.startswith(prefix):
             raise ValueError(f"Modal returned a file outside the artifact root: {remote_path}")
-        relative = PurePosixPath(remote_path[len(prefix) :])
+        relative_str = remote_path[len(prefix) :]
+        if relative_str.startswith("/"):
+            raise ValueError(f"Modal returned an unsafe artifact path: {remote_path}")
+        relative = PurePosixPath(relative_str)
         if not relative.parts or ".." in relative.parts:
             raise ValueError(f"Modal returned an unsafe artifact path: {remote_path}")
         destination = output_dir.joinpath(*relative.parts)
@@ -119,10 +122,12 @@ def _rewrite_result(result: Any, remote_root: str, output_dir: Path) -> Any:
     remote_path = result["path"]
     prefix = f"{remote_root.rstrip('/')}/"
     if remote_path.startswith(prefix):
-        relative = PurePosixPath(remote_path[len(prefix) :])
-        if relative.parts and ".." not in relative.parts:
-            result = dict(result)
-            result["path"] = str(output_dir.joinpath(*relative.parts))
+        relative_str = remote_path[len(prefix) :]
+        if not relative_str.startswith("/"):
+            relative = PurePosixPath(relative_str)
+            if relative.parts and ".." not in relative.parts:
+                result = dict(result)
+                result["path"] = str(output_dir.joinpath(*relative.parts))
     return result
 
 
