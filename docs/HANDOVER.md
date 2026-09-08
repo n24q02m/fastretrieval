@@ -2,7 +2,7 @@
 
 ## Product boundary
 
-`fastretrieval` is a Python retrieval runtime, not an MCP server. It provides dense, sparse, late-interaction, multimodal, and cross-encoder facades over ONNX Runtime and optional GGUF backends. Wet, Mnemo, and Better Code Review Graph consume its public embedding and reranking contracts; they own transport, authentication, and deployment.
+`fastretrieval` is a Python retrieval runtime, not an MCP server. It provides dense, sparse, late-interaction, multimodal, and cross-encoder facades over ONNX Runtime and optional GGUF backends. Wet and Better Code Review Graph currently consume its public embedding contracts; the canonical Mnemo main checkout still declares `qwen3-embed` and imports `qwen3_embed`, so Mnemo adoption is a separate migration residual. Consumers own transport, authentication, and deployment.
 
 Package identity is `fastretrieval` for both distribution and import. Qwen3 names remain model identifiers. The deprecated `QWEN3_EMBED_*` environment variables remain readable and warn; `FASTRETRIEVAL_*` values take precedence.
 
@@ -35,7 +35,7 @@ SPLADE reduction masks padded tokens before max/log processing and uses bounded 
 
 ## Consumer contract
 
-Consumers should depend on the published `fastretrieval` package and import public facades from `fastretrieval`. Do not add a `qwen3-embed` dependency or invent a fallback import. Keep model selection explicit for non-dense facades. Consumer changes must verify the exact producer artifact before adoption; a source merge alone is not runtime evidence.
+Wet declares `fastretrieval>=1.1.0,<2` and uses `fastretrieval.TextEmbedding` with the default Qwen3 model and optional dimensions. Better Code Review Graph declares `fastretrieval>=1.1.0b1,<2` and resolves the public `TextEmbedding` registry, including manifest-backed custom models. Canonical Mnemo main currently declares `qwen3-embed>=1.12.1` and imports `qwen3_embed.TextEmbedding`; do not treat it as a verified fastretrieval consumer. Consumers should depend on the published `fastretrieval` package and import public facades from `fastretrieval`. Do not add a `qwen3-embed` dependency or invent a fallback import in this repository. Keep model selection explicit for non-dense facades. Consumer changes must verify the exact producer artifact before adoption; a source merge alone is not runtime evidence.
 
 ## Modernization map
 
