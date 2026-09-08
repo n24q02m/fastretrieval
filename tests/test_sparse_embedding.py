@@ -10,20 +10,25 @@ def test_splade_post_process_matches_masked_log1p_max_contract():
     model = SpladePP.__new__(SpladePP)
     output = OnnxOutputContext(
         model_output=np.array(
-            [[[1.0, -2.0, 0.5], [4.0, 3.0, -1.0], [100.0, 100.0, 100.0]]],
+            [
+                [[1.0, -2.0, 0.5], [4.0, 3.0, -1.0], [100.0, 100.0, 100.0]],
+                [[-1.0, -2.0, -3.0], [9.0, 2.0, -4.0], [8.0, 8.0, 8.0]],
+            ],
             dtype=np.float32,
         ),
-        attention_mask=np.array([[1, 1, 0]], dtype=np.int64),
+        attention_mask=np.array([[1, 1, 0], [0, 0, 0]], dtype=np.int64),
     )
 
     embeddings = list(model._post_process_onnx_output(output))
 
-    assert len(embeddings) == 1
+    assert len(embeddings) == 2
     np.testing.assert_array_equal(embeddings[0].indices, [0, 1, 2])
     np.testing.assert_allclose(
         embeddings[0].values,
         np.log1p([4.0, 3.0, 0.5]).astype(np.float32),
     )
+    assert embeddings[1].indices.size == 0
+    assert embeddings[1].values.size == 0
 
 
 def test_sparse_embedding_as_dict_roundtrip():
