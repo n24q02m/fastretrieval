@@ -28,7 +28,7 @@ dependencies = [
     # API surface this package actually uses (stable since ~0.13), not "latest".
     # Keep it low so fastretrieval stays co-installable with transformers and other
     # tokenizers consumers (e.g. transformers 5.10.x caps tokenizers<=0.23.0). See #691.
-    "tokenizers>=0.23.1,<1.0",
+    "tokenizers>=0.23.2,<1.0",
     "huggingface-hub>=1.30.0,<2.0",
     "loguru>=0.7.3",
 ]
@@ -49,8 +49,8 @@ dev = [
     "pytest-xdist>=3.8.0",
     "pytest-timeout>=2.4.0",
     "syrupy>=6.0.0",
-    "ruff>=0.16.4",
-    "ty>=0.0.73",
+    "ruff>=0.16.5",
+    "ty>=0.0.78",
 ]
 
 [build-system]
