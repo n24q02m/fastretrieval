@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.3.1 (2026-09-11)
+
+### Bug Fixes
+
+- Pin better-semantic-release action to v1.6.1
+  ([#67](https://github.com/n24q02m/fastretrieval/pull/67),
+  [`17ab007`](https://github.com/n24q02m/fastretrieval/commit/17ab0072b5a5982efeb92cd1fcaab7662d2de964))
+
+
 ## v1.2.0-beta.1 (2026-08-31)
 
 ### Bug Fixes
