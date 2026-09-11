@@ -9,6 +9,10 @@
 name: CD
 
 on:
+  push:
+    branches:
+      - staging
+      - main
   workflow_dispatch:
     inputs:
       release_type:
@@ -18,6 +22,10 @@ on:
         options:
           - beta
           - stable
+
+env:
+  # Unified release ladder: push to staging = beta, push to main = stable.
+  RELEASE_TYPE: ${{ github.event_name == 'push' && (github.ref_name == 'staging' && 'beta' || 'stable') || inputs.release_type }}
 
 permissions:
   contents: read
@@ -83,7 +91,7 @@ jobs:
         id: release
         with:
           github_token: ${{ steps.app-token.outputs.token }}
-          prerelease: ${{ inputs.release_type == 'beta' }}
+          prerelease: ${{ env.RELEASE_TYPE == 'beta' }}
           prerelease_token: beta
 
       - uses: python-semantic-release/publish-action@6d89e2de8d40ecb3717316ecbbf15a6fa8ea9039 # v10.6.2
