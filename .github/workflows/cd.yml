@@ -1,355 +1,361 @@
-# =============================================================================
-# CD Template: Python. Publish steps are opt-in per repo via
-# vars.PUBLISH_PYPI / vars.PUBLISH_DOCKER / vars.PUBLISH_MCP_REGISTRY.
-# Managed by n24q02m repo-bootstrap; local changes may be overwritten.
-#
-# Pipeline: PSR v10 -> PyPI -> Docker multi-arch (amd64+arm64) -> MCP Registry
-# CUSTOMIZE: Search for "# CUSTOMIZE:" comments and adjust for your repo.
-# =============================================================================
-name: CD
-
-on:
-  workflow_dispatch:
-    inputs:
-      release_type:
-        description: "Release type"
-        required: true
-        type: choice
-        options:
-          - beta
-          - stable
-
-permissions:
-  contents: read
-
-env:
-  DOCKERHUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/fastretrieval
-  GHCR_IMAGE: ghcr.io/${{ github.repository }}
-
-concurrency:
-  group: release
-  cancel-in-progress: false
-
-jobs:
-  # ============================================================================
-  # README registry metadata: the package carries the repo's README to PyPI, so
-  # a manifest that names a file which is not there publishes an empty project
-  # page. Runs before the release rather than beside it -- a PyPI upload cannot
-  # be undone, only yanked.
-  # ============================================================================
-  readme-sync:
-    name: Verify README registry metadata
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.13"
-      - name: Verify README registry metadata
-        run: python scripts/repo-bootstrap/verify_readme_sync.py --repo-root=.
-
-  # ============================================================================
-  # Release: PSR v10
-  # ============================================================================
-  release:
-    name: Semantic Release
-    runs-on: ubuntu-latest
-    outputs:
-      released: ${{ steps.release.outputs.released }}
-      tag: ${{ steps.release.outputs.tag }}
-      version: ${{ steps.release.outputs.version }}
-      is_prerelease: ${{ steps.release.outputs.is_prerelease }}
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
-        with:
-          egress-policy: audit
-
-      - name: Generate GitHub App Token
-        id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          app-id: ${{ vars.CI_APP_ID }}
-          private-key: ${{ secrets.CI_APP_KEY }}
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-          fetch-depth: 0
-
-      # Version bump runs on the fork (orphan-tag + registry-collision guards).
-      # The publish step below stays upstream — the fork does not replace it.
-      - uses: n24q02m/better-semantic-release@6e6884898bfe1ac34a0bc64ed62f54a21562df23 # v1.6.1
-        id: release
-        with:
-          github_token: ${{ steps.app-token.outputs.token }}
-          prerelease: ${{ inputs.release_type == 'beta' }}
-          prerelease_token: beta
-
-      - uses: python-semantic-release/publish-action@6d89e2de8d40ecb3717316ecbbf15a6fa8ea9039 # v10.6.2
-        if: steps.release.outputs.released == 'true'
-        with:
-          github_token: ${{ steps.app-token.outputs.token }}
-          tag: ${{ steps.release.outputs.tag }}
-
-  # ============================================================================
-  # Notify Downstream
-  # ============================================================================
-  # A core/shared repo cutting a stable release has to open a tracking issue in
-  # every repo that pins it, or downstream pins drift silently. The dispatch goes
-  # to one hub repo that fans the issues out; `n24q02m/n24q02m` is that hub as a
-  # literal, copied from the repo this template was measured against rather than
-  # derived from `n24q02m` -- the hub happening to share the owner's name is not
-  # a rule this template gets to assume.
-  #
-  # Stable only: `is_prerelease != 'true'`. A beta cutting downstream issues would
-  # file the same issue again at stable.
-  #
-  # NOTIFY_DOWNSTREAM, because that rule binds CORE repos and this template lands
-  # on every Python repo. Ungated, a non-core repo in this stack would dispatch
-  # `core-update` on a stable release with client_payload[core] naming itself.
-  # Two measurements say that is latent rather than visible: the hub repo has
-  # exactly one workflow (opencode.yml) and no `repository_dispatch` trigger
-  # anywhere, so nothing handles `core-update` today; and the job this was
-  # copied from is `skipped` in 10 of its 10 recorded CD runs. A job that has
-  # never once executed is not evidence that it is safe to fan out -- it is a
-  # wrong fan-out waiting for the day a handler is added.
-  notify-downstream:
-    name: Notify Downstream
-    needs: [release]
-    if: >-
-      needs.release.outputs.released == 'true'
-      && needs.release.outputs.is_prerelease != 'true'
-      && vars.NOTIFY_DOWNSTREAM == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
-        with:
-          egress-policy: audit
-
-      - name: Generate GitHub App Token
-        id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          app-id: ${{ vars.CI_APP_ID }}
-          private-key: ${{ secrets.CI_APP_KEY }}
-
-      - name: Dispatch core-update
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          gh api repos/n24q02m/n24q02m/dispatches \
-            -f event_type=core-update \
-            -f 'client_payload[core]=fastretrieval' \
-            -f 'client_payload[version]=${{ needs.release.outputs.version }}' \
-            -f 'client_payload[tag]=${{ needs.release.outputs.tag }}' \
-            -f 'client_payload[release_url]=https://github.com/${{ github.repository }}/releases/tag/${{ needs.release.outputs.tag }}'
-
-  # ============================================================================
-  # Publish to PyPI
-  # ============================================================================
-  publish-pypi:
-    name: Publish to PyPI
-    needs: [readme-sync, release]
-    if: needs.release.outputs.released == 'true' && vars.PUBLISH_PYPI == 'true'
-    runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.release.outputs.tag }}
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-      - run: uv build
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
-
-  # ============================================================================
-  # Build Docker (multi-arch: amd64 + arm64)
-  # ============================================================================
-  build-docker:
-    name: Build Docker (${{ matrix.platform }})
-    # readme-sync, because this job pushes an image to a registry and
-    # merge-docker then publishes ./README.md as the Docker Hub description.
-    # The gate is only a gate if it runs BEFORE the push.
-    needs: [readme-sync, release]
-    if: needs.release.outputs.released == 'true' && vars.PUBLISH_DOCKER == 'true'
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-latest
-            artifact: linux-amd64
-          - platform: linux/arm64
-            runner: ubuntu-24.04-arm
-            artifact: linux-arm64
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.release.outputs.tag }}
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
-      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        id: build
-        with:
-          context: .
-          platforms: ${{ matrix.platform }}
-          outputs: type=image,"name=${{ env.DOCKERHUB_IMAGE }},${{ env.GHCR_IMAGE }}",push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=${{ github.ref_name }}-${{ matrix.artifact }}
-          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-${{ matrix.artifact }}
-      - run: |
-          mkdir -p ${{ runner.temp }}/digests
-          echo "${{ steps.build.outputs.digest }}" > "${{ runner.temp }}/digests/${{ matrix.artifact }}"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: digest-${{ matrix.artifact }}
-          path: ${{ runner.temp }}/digests/*
-          retention-days: 1
-
-  # ============================================================================
-  # Merge Docker Manifests
-  # ============================================================================
-  merge-docker:
-    name: Merge Docker Manifests
-    needs: [release, build-docker]
-    if: needs.release.outputs.released == 'true' && vars.PUBLISH_DOCKER == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
-        with:
-          egress-policy: audit
-
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: digest-*
-          path: ${{ runner.temp }}/digests
-          merge-multiple: true
-      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create and push manifests
-        env:
-          VERSION: ${{ needs.release.outputs.version }}
-          IS_PRERELEASE: ${{ needs.release.outputs.is_prerelease }}
-        run: |
-          if [ "$IS_PRERELEASE" = "true" ]; then
-            TAGS="beta ${VERSION}"
-          else
-            MAJOR=$(echo "$VERSION" | cut -d. -f1)
-            MINOR=$(echo "$VERSION" | cut -d. -f1-2)
-            TAGS="latest ${VERSION} ${MINOR} ${MAJOR}"
-          fi
-
-          for IMAGE in "$DOCKERHUB_IMAGE" "$GHCR_IMAGE"; do
-            tag_args=()
-            for TAG in $TAGS; do
-              tag_args+=("-t" "${IMAGE}:${TAG}")
-            done
-
-            digest_args=()
-            for digest_file in "${{ runner.temp }}/digests/"*; do
-              while IFS= read -r digest; do
-                if [ -n "$digest" ]; then
-                  digest_args+=("${IMAGE}@${digest}")
-                fi
-              done < "$digest_file"
-            done
-
-            docker buildx imagetools create "${tag_args[@]}" "${digest_args[@]}"
-          done
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          sparse-checkout: README.md
-      - uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          # CUSTOMIZE: DockerHub repository name
-          repository: ${{ env.DOCKERHUB_IMAGE }}
-          short-description: ${{ github.event.repository.description }}
-          readme-filepath: ./README.md
-
-  # ============================================================================
-  # Publish to MCP Registry (stable only)
-  # ============================================================================
-  publish-mcp-registry:
-    name: Publish to MCP Registry
-    needs: [release, publish-pypi, merge-docker]
-    if: >-
-      needs.release.outputs.released == 'true'
-      && needs.release.outputs.is_prerelease != 'true'
-      && vars.PUBLISH_PYPI == 'true'
-      && vars.PUBLISH_DOCKER == 'true'
-      && vars.PUBLISH_MCP_REGISTRY == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.release.outputs.tag }}
-
-      - name: Update server.json version
-        run: |
-          VERSION="${{ needs.release.outputs.version }}"
-          jq --arg v "$VERSION" '
-            .version = $v |
-            .packages = [.packages[] |
-              if .registryType == "oci" then del(.version)
-              else .version = $v
-              end
-            ]
-          ' server.json > server.json.tmp && mv server.json.tmp server.json
-
-      - name: Install MCP Publisher
-        run: |
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
-
-      - name: Login to MCP Registry
-        run: ./mcp-publisher login github-oidc
-
-      - name: Publish to MCP Registry
-        run: ./mcp-publisher publish
+# =============================================================================
+# CD Template: Python. Publish steps are opt-in per repo via
+# vars.PUBLISH_PYPI / vars.PUBLISH_DOCKER / vars.PUBLISH_MCP_REGISTRY.
+# Managed by n24q02m repo-bootstrap; local changes may be overwritten.
+#
+# Pipeline: PSR v10 -> PyPI -> Docker multi-arch (amd64+arm64) -> MCP Registry
+# CUSTOMIZE: Search for "# CUSTOMIZE:" comments and adjust for your repo.
+# =============================================================================
+name: CD
+
+on:
+  push:
+    branches:
+      - staging
+      - main
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Release type"
+        required: true
+        type: choice
+        options:
+          - beta
+          - stable
+
+permissions:
+  contents: read
+
+env:
+  # Unified release ladder: push to staging = beta, push to main = stable.
+  RELEASE_TYPE: ${{ github.event_name == 'push' && (github.ref_name == 'staging' && 'beta' || 'stable') || inputs.release_type }}
+  DOCKERHUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/fastretrieval
+  GHCR_IMAGE: ghcr.io/${{ github.repository }}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # ============================================================================
+  # README registry metadata: the package carries the repo's README to PyPI, so
+  # a manifest that names a file which is not there publishes an empty project
+  # page. Runs before the release rather than beside it -- a PyPI upload cannot
+  # be undone, only yanked.
+  # ============================================================================
+  readme-sync:
+    name: Verify README registry metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Verify README registry metadata
+        run: python scripts/repo-bootstrap/verify_readme_sync.py --repo-root=.
+
+  # ============================================================================
+  # Release: PSR v10
+  # ============================================================================
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+      is_prerelease: ${{ steps.release.outputs.is_prerelease }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      # Version bump runs on the fork (orphan-tag + registry-collision guards).
+      # The publish step below stays upstream — the fork does not replace it.
+      - uses: n24q02m/better-semantic-release@6e6884898bfe1ac34a0bc64ed62f54a21562df23 # v1.6.1
+        id: release
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          prerelease: ${{ env.RELEASE_TYPE == 'beta' }}
+          prerelease_token: beta
+
+      - uses: python-semantic-release/publish-action@6d89e2de8d40ecb3717316ecbbf15a6fa8ea9039 # v10.6.2
+        if: steps.release.outputs.released == 'true'
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          tag: ${{ steps.release.outputs.tag }}
+
+  # ============================================================================
+  # Notify Downstream
+  # ============================================================================
+  # A core/shared repo cutting a stable release has to open a tracking issue in
+  # every repo that pins it, or downstream pins drift silently. The dispatch goes
+  # to one hub repo that fans the issues out; `n24q02m/n24q02m` is that hub as a
+  # literal, copied from the repo this template was measured against rather than
+  # derived from `n24q02m` -- the hub happening to share the owner's name is not
+  # a rule this template gets to assume.
+  #
+  # Stable only: `is_prerelease != 'true'`. A beta cutting downstream issues would
+  # file the same issue again at stable.
+  #
+  # NOTIFY_DOWNSTREAM, because that rule binds CORE repos and this template lands
+  # on every Python repo. Ungated, a non-core repo in this stack would dispatch
+  # `core-update` on a stable release with client_payload[core] naming itself.
+  # Two measurements say that is latent rather than visible: the hub repo has
+  # exactly one workflow (opencode.yml) and no `repository_dispatch` trigger
+  # anywhere, so nothing handles `core-update` today; and the job this was
+  # copied from is `skipped` in 10 of its 10 recorded CD runs. A job that has
+  # never once executed is not evidence that it is safe to fan out -- it is a
+  # wrong fan-out waiting for the day a handler is added.
+  notify-downstream:
+    name: Notify Downstream
+    needs: [release]
+    if: >-
+      needs.release.outputs.released == 'true'
+      && needs.release.outputs.is_prerelease != 'true'
+      && vars.NOTIFY_DOWNSTREAM == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_KEY }}
+
+      - name: Dispatch core-update
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api repos/n24q02m/n24q02m/dispatches \
+            -f event_type=core-update \
+            -f 'client_payload[core]=fastretrieval' \
+            -f 'client_payload[version]=${{ needs.release.outputs.version }}' \
+            -f 'client_payload[tag]=${{ needs.release.outputs.tag }}' \
+            -f 'client_payload[release_url]=https://github.com/${{ github.repository }}/releases/tag/${{ needs.release.outputs.tag }}'
+
+  # ============================================================================
+  # Publish to PyPI
+  # ============================================================================
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [readme-sync, release]
+    if: needs.release.outputs.released == 'true' && vars.PUBLISH_PYPI == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - run: uv build
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+
+  # ============================================================================
+  # Build Docker (multi-arch: amd64 + arm64)
+  # ============================================================================
+  build-docker:
+    name: Build Docker (${{ matrix.platform }})
+    # readme-sync, because this job pushes an image to a registry and
+    # merge-docker then publishes ./README.md as the Docker Hub description.
+    # The gate is only a gate if it runs BEFORE the push.
+    needs: [readme-sync, release]
+    if: needs.release.outputs.released == 'true' && vars.PUBLISH_DOCKER == 'true'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            artifact: linux-amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            artifact: linux-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        id: build
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,"name=${{ env.DOCKERHUB_IMAGE }},${{ env.GHCR_IMAGE }}",push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ github.ref_name }}-${{ matrix.artifact }}
+          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-${{ matrix.artifact }}
+      - run: |
+          mkdir -p ${{ runner.temp }}/digests
+          echo "${{ steps.build.outputs.digest }}" > "${{ runner.temp }}/digests/${{ matrix.artifact }}"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: digest-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/digests/*
+          retention-days: 1
+
+  # ============================================================================
+  # Merge Docker Manifests
+  # ============================================================================
+  merge-docker:
+    name: Merge Docker Manifests
+    needs: [release, build-docker]
+    if: needs.release.outputs.released == 'true' && vars.PUBLISH_DOCKER == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: digest-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create and push manifests
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+          IS_PRERELEASE: ${{ needs.release.outputs.is_prerelease }}
+        run: |
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            TAGS="beta ${VERSION}"
+          else
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+            TAGS="latest ${VERSION} ${MINOR} ${MAJOR}"
+          fi
+
+          for IMAGE in "$DOCKERHUB_IMAGE" "$GHCR_IMAGE"; do
+            tag_args=()
+            for TAG in $TAGS; do
+              tag_args+=("-t" "${IMAGE}:${TAG}")
+            done
+
+            digest_args=()
+            for digest_file in "${{ runner.temp }}/digests/"*; do
+              while IFS= read -r digest; do
+                if [ -n "$digest" ]; then
+                  digest_args+=("${IMAGE}@${digest}")
+                fi
+              done < "$digest_file"
+            done
+
+            docker buildx imagetools create "${tag_args[@]}" "${digest_args[@]}"
+          done
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: README.md
+      - uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          # CUSTOMIZE: DockerHub repository name
+          repository: ${{ env.DOCKERHUB_IMAGE }}
+          short-description: ${{ github.event.repository.description }}
+          readme-filepath: ./README.md
+
+  # ============================================================================
+  # Publish to MCP Registry (stable only)
+  # ============================================================================
+  publish-mcp-registry:
+    name: Publish to MCP Registry
+    needs: [release, publish-pypi, merge-docker]
+    if: >-
+      needs.release.outputs.released == 'true'
+      && needs.release.outputs.is_prerelease != 'true'
+      && vars.PUBLISH_PYPI == 'true'
+      && vars.PUBLISH_DOCKER == 'true'
+      && vars.PUBLISH_MCP_REGISTRY == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - name: Update server.json version
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          jq --arg v "$VERSION" '
+            .version = $v |
+            .packages = [.packages[] |
+              if .registryType == "oci" then del(.version)
+              else .version = $v
+              end
+            ]
+          ' server.json > server.json.tmp && mv server.json.tmp server.json
+
+      - name: Install MCP Publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Login to MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to MCP Registry
+        run: ./mcp-publisher publish
