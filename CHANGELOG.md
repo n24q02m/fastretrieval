@@ -2,6 +2,26 @@
 
 <!-- version list -->
 
+## v1.3.2 (2026-09-12)
+
+### Bug Fixes
+
+- **deps**: Update ghcr.io/astral-sh/uv:latest Docker digest to b485bd6
+  ([#68](https://github.com/n24q02m/fastretrieval/pull/68),
+  [`ee09e00`](https://github.com/n24q02m/fastretrieval/commit/ee09e00451f4dd68c3330df90d1789a551308b82))
+
+- **deps**: Update minor dependencies ([#70](https://github.com/n24q02m/fastretrieval/pull/70),
+  [`f65fa4c`](https://github.com/n24q02m/fastretrieval/commit/f65fa4c66f625363de9a9ec580e83e95af8839aa))
+
+- **deps**: Update patch dependencies ([#69](https://github.com/n24q02m/fastretrieval/pull/69),
+  [`0984f99`](https://github.com/n24q02m/fastretrieval/commit/0984f9987288b86a79154f7b196217a9cc483d7e))
+
+### Chores
+
+- **rulesets**: Align IaC with repo-bootstrap template
+  ([`bb821ca`](https://github.com/n24q02m/fastretrieval/commit/bb821ca42d9550d1f6e0575771694242b9723ea1))
+
+
 ## v1.3.1 (2026-09-11)
 
 ### Bug Fixes
