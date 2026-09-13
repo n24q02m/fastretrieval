@@ -76,6 +76,7 @@ Supported runtimes are CPython 3.11, 3.12, 3.13, and 3.14.
 - [Converting your own model](#converting-your-own-model)
 - [Configuration](#configuration)
 - [Migrating from qwen3-embed](#migrating-from-qwen3-embed)
+- [Releases and Deployment](#releases-and-deployment)
 - [Development](#development)
 - [Related Projects](#related-projects)
 - [Contributing](#contributing)
@@ -453,6 +454,12 @@ deprecated compatibility aliases:
 The old names still work and emit a `DeprecationWarning`; when both names are set, the
 `FASTRETRIEVAL_*` value wins. Existing `qwen3-embed` releases remain on PyPI and continue
 to receive security fixes while consumers migrate.
+
+## Releases and Deployment
+
+Merges to `main` release automatically: [`.github/workflows/cd.yml`](.github/workflows/cd.yml) runs python-semantic-release (v10) and publishes the version to [PyPI](https://pypi.org/project/fastretrieval/) via Trusted Publishing (`PUBLISH_PYPI=true`). Beta prereleases are cut only by a manual `workflow_dispatch` with `release_type=beta`. Before any release, the `readme-sync` job verifies that `pyproject.toml` points at the README shipped to the registry, so README edits pass through the same gate. The Docker, MCP-registry, and downstream-notify jobs in the CD template are gated off for this repo (`PUBLISH_DOCKER`, `PUBLISH_MCP_REGISTRY`, and `NOTIFY_DOWNSTREAM` are unset).
+
+The public reference page is [mcp.n24q02m.com/reference/fastretrieval/](https://mcp.n24q02m.com/reference/fastretrieval/). `fastretrieval` is a library: it ships no MCP endpoint and has no hosted deployment.
 
 ## Related Projects
 
