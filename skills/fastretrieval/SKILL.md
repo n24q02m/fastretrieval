@@ -18,6 +18,7 @@ Thư viện hạng-1; không có CLI/server — import trực tiếp trong scrip
 ## Ví dụ
 ```python
 from fastretrieval import TextEmbedding, TextCrossEncoder
+
 model = TextEmbedding("onnx-model")
 emb = list(model.embed(["query text"]))
 ```
