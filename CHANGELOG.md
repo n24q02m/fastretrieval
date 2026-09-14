@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.6.2 (2026-09-14)
+
+### Bug Fixes
+
+- **deps**: Lock file maintenance ([#73](https://github.com/n24q02m/fastretrieval/pull/73),
+  [`f75bae2`](https://github.com/n24q02m/fastretrieval/commit/f75bae2400a065cb82ff838f5a359193745923e6))
+
+
 ## v1.6.1 (2026-09-14)
 
 ### Bug Fixes
