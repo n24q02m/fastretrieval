@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.6.1 (2026-09-14)
+
+### Bug Fixes
+
+- **deps**: Update dawidd6/action-send-mail action to v21
+  ([#72](https://github.com/n24q02m/fastretrieval/pull/72),
+  [`55dfd35`](https://github.com/n24q02m/fastretrieval/commit/55dfd35e163f07692fa39947d9486a542790d1ae))
+
+
 ## v1.3.2 (2026-09-12)
 
 ### Bug Fixes
