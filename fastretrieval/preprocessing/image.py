@@ -50,6 +50,9 @@ def preprocess_images(images: Iterable[object], spec: PreprocessorSpec) -> np.nd
         # Transpose individual arrays before appending to return contiguous array from np.stack
         batch.append(np.asarray(resized, dtype=np.float32).transpose(2, 0, 1))
 
+    if not batch:
+        return np.zeros((0, 3, height, width), dtype=np.float32)
+
     # ⚡ Bolt: Fast stacked contiguous array with in-place operations to avoid extra memory allocations (~15% faster)
     stacked = np.stack(batch)
     stacked /= 255.0
