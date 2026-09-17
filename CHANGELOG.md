@@ -2,6 +2,23 @@
 
 <!-- version list -->
 
+## v1.6.3 (2026-09-17)
+
+### Bug Fixes
+
+- **deps**: Update ghcr.io/astral-sh/uv:latest Docker digest to 62f8c04
+  ([#79](https://github.com/n24q02m/fastretrieval/pull/79),
+  [`d6eb6ed`](https://github.com/n24q02m/fastretrieval/commit/d6eb6ed97ca67be242bfa1c2be285ec0fdbdb5ac))
+
+- **deps**: Update minor dependencies ([#81](https://github.com/n24q02m/fastretrieval/pull/81),
+  [`bffeb9c`](https://github.com/n24q02m/fastretrieval/commit/bffeb9cbbfff56e0836737a3a6f99723039232d0))
+
+### Continuous Integration
+
+- Consolidate workflows into ci.yml + cd.yml
+  ([`b5d7f30`](https://github.com/n24q02m/fastretrieval/commit/b5d7f30a543a55037ce5b7f27c10e181ef541fe5))
+
+
 ## v1.6.2 (2026-09-14)
 
 ### Bug Fixes
