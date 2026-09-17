@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.6.4 (2026-09-17)
+
+### Bug Fixes
+
+- Optimize numpy batch image preprocessing ([#78](https://github.com/n24q02m/fastretrieval/pull/78),
+  [`eab6ed8`](https://github.com/n24q02m/fastretrieval/commit/eab6ed8c101d96bed5aa3c67a388c6c9e2484271))
+
+
 ## v1.6.3 (2026-09-17)
 
 ### Bug Fixes
