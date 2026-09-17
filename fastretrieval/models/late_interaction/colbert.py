@@ -65,10 +65,11 @@ class Colbert(LateInteractionTextEmbeddingBase, OnnxTextModel[NumpyArray]):
             # ⚡ Bolt: Fast masking and L2 norm using boolean indexing and einsum (~4x faster)
             model_output = np.array(output.model_output, dtype=np.float32, copy=True)
             model_output[output.attention_mask == 0] = 0
-            norm_sq = np.einsum("ijk,ijk->ij", model_output, model_output)
-            norm = np.sqrt(norm_sq)[:, :, np.newaxis]
-            norm_clamped = np.maximum(norm, 1e-12)
-            model_output /= norm_clamped
+            # ⚡ Bolt: Fast L2 norm using generalized einsum and in-place operations
+            norm_sq = np.einsum("...i,...i->...", model_output, model_output)
+            norm = np.sqrt(norm_sq, out=norm_sq)[..., np.newaxis]
+            np.maximum(norm, 1e-12, out=norm)
+            model_output /= norm
             output.model_output = model_output
 
             for embedding, attention_mask in zip(
