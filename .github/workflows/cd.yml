@@ -12,6 +12,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: "0 3 * * 1"
   workflow_dispatch:
     inputs:
       release_type:
@@ -21,6 +23,10 @@ on:
         options:
           - beta
           - stable
+      model:
+        description: HuggingFace model id for the convert smoke test
+        required: false
+        default: hf-internal-testing/tiny-random-BertModel
 
 permissions:
   contents: read
@@ -44,6 +50,9 @@ jobs:
   # ============================================================================
   readme-sync:
     name: Verify README registry metadata
+    # Release lane only; the weekly schedule (folded in for the convert
+    # smoke test) must not run it.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -58,6 +67,9 @@ jobs:
   # ============================================================================
   release:
     name: Semantic Release
+    # Release lane only; the weekly schedule (folded in for the convert
+    # smoke test) must never cut a release.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
@@ -358,3 +370,66 @@ jobs:
 
       - name: Publish to MCP Registry
         run: ./mcp-publisher publish
+
+  # ============================================================================
+  # Convert smoke test (merged from convert.yml; schedule + dispatch)
+  # ============================================================================
+  convert-smoke:
+    name: Convert smoke test
+    # Merged from convert.yml: weekly schedule + manual dispatch only;
+    # never on the release push trigger.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Convert a tiny model end to end
+        env:
+          MODEL: ${{ inputs.model || 'hf-internal-testing/tiny-random-BertModel' }}
+        run: |
+          uv run --with-requirements fastretrieval/convert/requirements.txt \
+            python -m fastretrieval.convert onnx "$MODEL" \
+            --out ./smoke-out --pooling mean --normalize
+
+      - name: Check the artifacts exist
+        run: |
+          test -f ./smoke-out/onnx/model_quantized.onnx
+          test -f ./smoke-out/onnx/model_q4f16.onnx
+          test -f ./smoke-out/fastretrieval-manifest.json
+          test -f ./smoke-out/config.json
+          test -f ./smoke-out/tokenizer.json
+          test -f ./smoke-out/tokenizer_config.json
+
+      - name: Verify parity and load the runtime inputs
+        env:
+          MODEL: ${{ inputs.model || 'hf-internal-testing/tiny-random-BertModel' }}
+        run: |
+          uv run --with-requirements fastretrieval/convert/requirements.txt \
+            python -m fastretrieval.convert verify ./smoke-out --source "$MODEL"
+          uv run --with-requirements fastretrieval/convert/requirements.txt python - <<'PY'
+          from pathlib import Path
+
+          import onnxruntime as ort
+
+          from fastretrieval.common.preprocessor_utils import load_tokenizer
+
+          root = Path("smoke-out")
+          load_tokenizer(root)
+          for artifact in sorted((root / "onnx").glob("*.onnx")):
+              session = ort.InferenceSession(
+                  str(artifact), providers=["CPUExecutionProvider"]
+              )
+              assert session.get_inputs(), artifact
+              assert session.get_outputs(), artifact
+          print("converted ONNX variants load with runtime tokenizer and ORT")
+          PY
