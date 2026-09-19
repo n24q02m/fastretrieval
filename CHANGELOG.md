@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.7.1 (2026-09-19)
+
+### Bug Fixes
+
+- **ci**: Scope notify-downstream app token to the dispatch target repo
+  ([#87](https://github.com/n24q02m/fastretrieval/pull/87),
+  [`6eccdc4`](https://github.com/n24q02m/fastretrieval/commit/6eccdc4eedf2db54ad898c93f2f956265c113fac))
+
+
 ## v1.6.4 (2026-09-17)
 
 ### Bug Fixes
