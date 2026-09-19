@@ -1,0 +1,65 @@
+# Code scanning configuration anchor.
+#
+# WHY THIS FILE EXISTS
+# ====================
+# The original .github/workflows/codeql.yml was consolidated into ci.yml
+# (b5d7f30, 2026-09-17). GitHub's code-scanning registry for refs/heads/main
+# still carried the historical `.github/workflows/codeql.yml:analyze`
+# configuration, and once the file disappeared every pull request received a
+# neutral "CodeQL" check: "1 configuration not found:
+# .github/workflows/codeql.yml:analyze". That registration cannot be cleared
+# through the REST API (default-setup DELETE returns 404; no public
+# configurations endpoint exists) — the documented removal path is UI-only:
+# Security > Code scanning > open an alert > Affected branches > main >
+# "Configurations analyzing" > delete the stale entry > Save changes.
+#
+# This file re-creates the registered configuration exactly (same workflow
+# path, same job id `analyze`, same action pins as ci.yml's `analyze` job) so
+# analyses flow from `.github/workflows/codeql.yml:analyze` again and the
+# neutral warning clears.
+#
+# NOTE: CodeQL intentionally runs twice per push/PR while this file coexists
+# with ci.yml's `analyze` job (two registered configurations).
+#
+# TO END THE DUPLICATION: delete this file first, then remove the leftover
+# `.github/workflows/codeql.yml:analyze` registration via the UI path above.
+# Deleting this file alone re-creates the stale registration and the warning.
+
+name: CodeQL
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  # Same keying rules as CI (per event + pr/ref so runs only cancel within
+  # the same pr/ref — see the concurrency comment in ci.yml for the history).
+  group: >-
+    ${{ format('codeql-{0}-{1}-{2}', github.workflow, github.event_name, github.event.pull_request.number || github.ref) }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (CodeQL)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        # Omit languages so CodeQL uses its supported repository autodetection.
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
