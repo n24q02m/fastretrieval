@@ -151,6 +151,11 @@ jobs:
         with:
           app-id: ${{ vars.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_KEY }}
+          # Without owner/repositories the token is scoped to THIS repo only
+          # and the dispatch 403s ("Resource not accessible by integration").
+          # Scope to the dispatch target repo, nothing more.
+          owner: n24q02m
+          repositories: n24q02m
 
       - name: Dispatch core-update
         env:
