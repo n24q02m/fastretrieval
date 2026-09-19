@@ -420,6 +420,11 @@ uv run pytest -m "not integration" --tb=short    # Unit tests only (CI default)
 # Shortcuts (optional, via mise): mise run setup / lint / test / fix
 ```
 
+Note: pull requests see two identical "Analyze (CodeQL)" checks — CI intentionally
+runs CodeQL from two configurations (ci.yml and `.github/workflows/codeql.yml`)
+until the legacy code-scanning registration is removed. The cleanup runbook
+lives in the header of `.github/workflows/codeql.yml`.
+
 ## Migrating from qwen3-embed
 
 The library was previously published as `qwen3-embed`. New releases use the
