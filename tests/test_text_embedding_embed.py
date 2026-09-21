@@ -28,7 +28,7 @@ class TestTextEmbeddingEmbed:
     def test_embed_iterable(self, mock_embedding):
         """Verify embed calls iter_checked_texts and delegates to model.embed for an iterable of strings."""
         mock_embedding.model.embed.return_value = iter([10, 20])
-        docs = ["doc1", "doc2"]
+        docs = (d for d in ["doc1", "doc2"])
         mock_iter = iter(docs)
 
         with patch(

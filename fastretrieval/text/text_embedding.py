@@ -206,6 +206,10 @@ class TextEmbedding(TextEmbeddingBase):
         if isinstance(documents, str):
             check_input_length(documents)
             docs: str | Iterable[str] = documents
+        elif isinstance(documents, list):
+            for doc in documents:
+                check_input_length(doc)
+            docs = documents
         else:
             docs = iter_checked_texts(documents)
 
@@ -226,6 +230,10 @@ class TextEmbedding(TextEmbeddingBase):
         if isinstance(query, str):
             check_input_length(query)
             q: str | Iterable[str] = query
+        elif isinstance(query, list):
+            for q_str in query:
+                check_input_length(q_str)
+            q = query
         else:
             q = iter_checked_texts(query)
 
@@ -244,9 +252,16 @@ class TextEmbedding(TextEmbeddingBase):
             Iterable[NumpyArray]: The passage embeddings, one per text.
         """
         # This is model-specific, so that different models can have specialized implementations
-        from fastretrieval.common.utils import iter_checked_texts
+        from fastretrieval.common.utils import check_input_length, iter_checked_texts
 
-        yield from self.model.passage_embed(iter_checked_texts(texts), **kwargs)
+        if isinstance(texts, list):
+            for text in texts:
+                check_input_length(text)
+            docs: Iterable[str] = texts
+        else:
+            docs = iter_checked_texts(texts)
+
+        yield from self.model.passage_embed(docs, **kwargs)
 
     def token_count(
         self, texts: str | Iterable[str], batch_size: int = 1024, **kwargs: Any
