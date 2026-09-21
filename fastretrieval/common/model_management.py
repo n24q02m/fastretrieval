@@ -188,7 +188,7 @@ class ModelManagement(Generic[T]):
         """
 
         parsed = urllib.parse.urlparse(url)
-        if parsed.scheme != "https" or parsed.hostname != "storage.googleapis.com":
+        if parsed.scheme != "https" or parsed.netloc != "storage.googleapis.com":
             raise ValueError(
                 f"Invalid URL: {url}. Only URLs from Google Cloud Storage are allowed."
             )
