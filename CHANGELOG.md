@@ -2,6 +2,37 @@
 
 <!-- version list -->
 
+## v1.7.2 (2026-09-21)
+
+### Bug Fixes
+
+- Optimize image batch type conversion ([#95](https://github.com/n24q02m/fastretrieval/pull/95),
+  [`549aa20`](https://github.com/n24q02m/fastretrieval/commit/549aa207bdea7a47547275a226f6d71074de7615))
+
+- Prevent ssrf bypass in gcs url validation
+  ([#94](https://github.com/n24q02m/fastretrieval/pull/94),
+  [`10378c1`](https://github.com/n24q02m/fastretrieval/commit/10378c1f73ba9f60c335ea393fe12454c989ff7f))
+
+- **deps**: Update ghcr.io/astral-sh/uv:latest Docker digest to 10787c6
+  ([#84](https://github.com/n24q02m/fastretrieval/pull/84),
+  [`7fb8634`](https://github.com/n24q02m/fastretrieval/commit/7fb86347df09a270ed5e4659a1e33a7bdb665a64))
+
+- **deps**: Update minor dependencies ([#90](https://github.com/n24q02m/fastretrieval/pull/90),
+  [`ce44122`](https://github.com/n24q02m/fastretrieval/commit/ce441221156c74d7e6e399362a6b646cd176a609))
+
+### Continuous Integration
+
+- Re-add codeql.yml as anchor for stale code-scanning configuration
+  ([#88](https://github.com/n24q02m/fastretrieval/pull/88),
+  [`85f5c7d`](https://github.com/n24q02m/fastretrieval/commit/85f5c7d4ce83fbfcd0e611f36c8a457bf6374afd))
+
+### Documentation
+
+- Note dual CodeQL configurations in Development section
+  ([#89](https://github.com/n24q02m/fastretrieval/pull/89),
+  [`32870c2`](https://github.com/n24q02m/fastretrieval/commit/32870c237c05439581e381fc83a80f7dab89ebe9))
+
+
 ## v1.7.1 (2026-09-19)
 
 ### Bug Fixes
