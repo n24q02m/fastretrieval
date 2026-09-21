@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.7.3 (2026-09-21)
+
+### Bug Fixes
+
+- **deps**: Update patch dependencies ([#85](https://github.com/n24q02m/fastretrieval/pull/85),
+  [`24c1980`](https://github.com/n24q02m/fastretrieval/commit/24c19806a8d7d1c65dae6e541742221b7df4a005))
+
+
 ## v1.7.2 (2026-09-21)
 
 ### Bug Fixes
