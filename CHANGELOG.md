@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.8.1 (2026-09-22)
+
+### Bug Fixes
+
+- Preserve list fast-path in text embedding batching
+  ([#96](https://github.com/n24q02m/fastretrieval/pull/96),
+  [`b2e2549`](https://github.com/n24q02m/fastretrieval/commit/b2e25491127d4c70bf1f4c7feb284e7cb964b858))
+
+- **deps**: Update dawidd6/action-send-mail action to v22
+  ([#91](https://github.com/n24q02m/fastretrieval/pull/91),
+  [`abbd726`](https://github.com/n24q02m/fastretrieval/commit/abbd7260dad89b14645c42da8e53f7a36c1e0789))
+
+### Continuous Integration
+
+- **pr-title**: Allow perf type — bolt bots emit perf: titles; PSR treats perf as patch-worthy
+  ([#97](https://github.com/n24q02m/fastretrieval/pull/97),
+  [`f4b0659`](https://github.com/n24q02m/fastretrieval/commit/f4b0659ed1cf77f18b53a8b6f197dadd608abfa3))
+
+
 ## v1.7.4 (2026-09-22)
 
 ### Bug Fixes
