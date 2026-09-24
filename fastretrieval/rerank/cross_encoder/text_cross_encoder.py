@@ -125,7 +125,13 @@ class TextCrossEncoder(TextCrossEncoderBase):
         from fastretrieval.common.utils import check_input_length, iter_checked_texts
 
         check_input_length(query)
-        docs = iter_checked_texts(documents)
+
+        if isinstance(documents, list):
+            for doc in documents:
+                check_input_length(doc)
+            docs: Iterable[str] = documents
+        else:
+            docs = iter_checked_texts(documents)
 
         yield from self.model.rerank(query, docs, batch_size=batch_size, **kwargs)
 
@@ -158,14 +164,23 @@ class TextCrossEncoder(TextCrossEncoderBase):
         """
         from fastretrieval.common.utils import check_input_length
 
-        def _check_pairs(ps):
-            for q, d in ps:
+        if isinstance(pairs, list):
+            for q, d in pairs:
                 check_input_length(q)
                 check_input_length(d)
-                yield q, d
+            checked_pairs: Iterable[tuple[str, str]] = pairs
+        else:
+
+            def _check_pairs(ps: Iterable[tuple[str, str]]) -> Iterable[tuple[str, str]]:
+                for q, d in ps:
+                    check_input_length(q)
+                    check_input_length(d)
+                    yield q, d
+
+            checked_pairs = _check_pairs(pairs)
 
         yield from self.model.rerank_pairs(
-            _check_pairs(pairs), batch_size=batch_size, parallel=parallel, **kwargs
+            checked_pairs, batch_size=batch_size, parallel=parallel, **kwargs
         )
 
     @classmethod
