@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.8.2 (2026-09-24)
+
+### Bug Fixes
+
+- Preserve list type in reranker batching to enable fast-paths
+  ([#98](https://github.com/n24q02m/fastretrieval/pull/98),
+  [`acd0865`](https://github.com/n24q02m/fastretrieval/commit/acd0865854e376066eabd6f8afdad46a007d07a4))
+
+
 ## v1.8.1 (2026-09-22)
 
 ### Bug Fixes
