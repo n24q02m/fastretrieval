@@ -6,6 +6,6 @@ onnxruntime[quantization]>=1.30.0,<1.31; python_version < "3.11"
 onnxruntime[quantization]>=1.30.0; python_version >= "3.11"
 onnx-ir>=1.0.0
 onnxconverter-common>=1.16.0
-huggingface-hub>=1.32.0
+huggingface-hub>=1.33.0
 gguf>=0.19.0
 sentencepiece>=0.2.2
