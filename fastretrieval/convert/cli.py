@@ -39,6 +39,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="declare output L2 normalization instead of guessing",
     )
     onnx.add_argument(
+        "--output-dim",
+        type=int,
+        default=None,
+        help=(
+            "explicit output dimension declared in the contract; required for "
+            "task=cross_encoder unless --yes-no-head is used (1 for a single-logit "
+            "ms-marco style cross-encoder)"
+        ),
+    )
+    onnx.add_argument(
         "--variants",
         default="int8,q4f16",
         help="comma-separated subset of int8,q4f16 (default: both)",
@@ -134,6 +144,7 @@ def main(argv: list[str] | None = None) -> int:
                 ],
                 pooling=args.pooling,
                 normalization=args.normalize,
+                output_dim=args.output_dim,
                 yes_no=yes_no,
             )
             print(result)
@@ -146,6 +157,7 @@ def main(argv: list[str] | None = None) -> int:
             variants=[variant.strip() for variant in args.variants.split(",") if variant.strip()],
             pooling=args.pooling,
             normalization=args.normalize,
+            output_dim=args.output_dim,
             yes_no=yes_no,
         )
         for name, megabytes in sizes.items():

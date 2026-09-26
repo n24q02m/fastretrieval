@@ -101,6 +101,16 @@ class ModelProfile:
             raise ValueError(f"{context}: preprocessor must be a PreprocessorSpec")
         dim = output_dim if output_dim is not None else self.output_dim
         shape = output_shape
+        if output_dim is not None:
+            if isinstance(output_dim, bool) or not isinstance(output_dim, int) or output_dim <= 0:
+                raise ValueError(
+                    f"{context}: output_dim must be a positive integer, got {output_dim!r}"
+                )
+            if yes_no is not None:
+                raise ValueError(
+                    f"{context}: output_dim and a yes_no head are mutually exclusive; "
+                    "declare exactly one output contract"
+                )
         if yes_no is not None:
             if self.task != "generative_reranker":
                 raise ValueError(

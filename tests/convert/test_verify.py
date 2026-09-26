@@ -6,17 +6,26 @@ from fastretrieval.convert.manifest import write_manifest
 from fastretrieval.convert.verify import compare_embeddings, verify_converted, verify_manifest
 
 
-def _write_artifact(tmp_path, *, formats=("onnx",), names=("onnx/model.onnx",), quantization=None):
+def _write_artifact(
+    tmp_path,
+    *,
+    formats=("onnx",),
+    names=("onnx/model.onnx",),
+    quantization=None,
+    task="dense",
+    output_dim=3,
+    normalization=False,
+):
     contract = ModelContract(
         model_id="acme/tiny-model",
         source="acme/tiny-model",
-        task="dense",
+        task=task,
         modality="text",
         model_family="bert",
-        output_dim=3,
-        output_shape=(3,),
-        pooling="MEAN",
-        normalization=False,
+        output_dim=output_dim,
+        output_shape=(output_dim,),
+        pooling="MEAN" if task == "dense" else "CLS",
+        normalization=normalization,
         max_seq_len=32,
         preprocessor=PreprocessorSpec(kind="text"),
         artifact_formats=formats,
@@ -202,3 +211,108 @@ def test_negative_atol_is_rejected(tmp_path):
     _write_artifact(tmp_path, names=("onnx/model.onnx",))
     with pytest.raises(ValueError, match="non-negative"):
         verify_converted(tmp_path, "acme/tiny-model", atol=-1e-2)
+
+
+# ---------------------------------------------------------------------------
+# Cross-encoder logits verification (BERT cross_encoder CLI path)
+# ---------------------------------------------------------------------------
+def _stub_cross_encoder_verify(monkeypatch, reference, candidate_by_name):
+    monkeypatch.setattr("fastretrieval.convert.verify.require_convert_deps", lambda *modules: None)
+    monkeypatch.setattr(
+        "fastretrieval.convert.verify.validate_artifacts",
+        lambda directory, expected_source=None: verify_manifest(
+            directory, expected_source=expected_source
+        ),
+    )
+    monkeypatch.setattr(
+        "fastretrieval.convert.verify._reference_embeddings",
+        lambda source, contract: reference,
+    )
+
+    def _fake_onnx(artifact, contract, source):
+        return candidate_by_name[artifact.name]
+
+    monkeypatch.setattr("fastretrieval.convert.verify._onnx_embeddings", _fake_onnx)
+
+
+def test_cross_encoder_logits_verify_uses_per_variant_tolerance(tmp_path, monkeypatch):
+    _write_artifact(
+        tmp_path,
+        names=("onnx/model_quantized.onnx", "onnx/model_q4f16.onnx"),
+        quantization="int8,q4f16",
+        task="cross_encoder",
+        output_dim=1,
+    )
+    reference = np.array([[4.2], [-0.3], [1.7], [0.9]], dtype=np.float32)
+    _stub_cross_encoder_verify(
+        monkeypatch,
+        reference,
+        {
+            "model_quantized.onnx": reference + np.float32(0.05),
+            "model_q4f16.onnx": reference + np.float32(0.07),
+        },
+    )
+
+    report = verify_converted(tmp_path, "acme/tiny-model")
+
+    assert report["passed"] is True
+    assert report["atol_mode"] == "per_variant"
+    variants = report["variant_reports"]
+    assert variants["onnx/model_quantized.onnx"]["atol"] == pytest.approx(0.1)
+    assert variants["onnx/model_q4f16.onnx"]["atol"] == pytest.approx(0.15)
+
+
+def test_cross_encoder_logits_drift_beyond_tolerance_fails(tmp_path, monkeypatch):
+    _write_artifact(tmp_path, quantization="int8", task="cross_encoder", output_dim=1)
+    reference = np.array([[4.2], [-0.3], [1.7], [0.9]], dtype=np.float32)
+    _stub_cross_encoder_verify(
+        monkeypatch,
+        reference,
+        {"model.onnx": reference + np.float32(0.5)},
+    )
+
+    report = verify_converted(tmp_path, "acme/tiny-model")
+
+    assert report["passed"] is False
+    assert report["max_abs_diff"] == pytest.approx(0.5)
+
+
+def test_cross_encoder_output_shape_mismatch_is_an_error(tmp_path, monkeypatch):
+    _write_artifact(tmp_path, task="cross_encoder", output_dim=1)
+    reference = np.zeros((4, 1), dtype=np.float32)
+    _stub_cross_encoder_verify(
+        monkeypatch,
+        reference,
+        {"model.onnx": np.zeros((4, 2), dtype=np.float32)},
+    )
+
+    with pytest.raises(ValueError, match="output shape mismatch"):
+        verify_converted(tmp_path, "acme/tiny-model")
+
+
+def test_cross_encoder_verify_rejects_normalization_true(tmp_path, monkeypatch):
+    _write_artifact(tmp_path, task="cross_encoder", output_dim=1, normalization=True)
+    monkeypatch.setattr("fastretrieval.convert.verify.require_convert_deps", lambda *modules: None)
+    monkeypatch.setattr(
+        "fastretrieval.convert.verify.validate_artifacts",
+        lambda directory, expected_source=None: verify_manifest(
+            directory, expected_source=expected_source
+        ),
+    )
+
+    with pytest.raises(ValueError, match="normalization=False"):
+        verify_converted(tmp_path, "acme/tiny-model")
+
+
+def test_verify_still_rejects_other_tasks(tmp_path, monkeypatch):
+    _write_artifact(tmp_path, task="generative_reranker", output_dim=2)
+    monkeypatch.setattr("fastretrieval.convert.verify.require_convert_deps", lambda *modules: None)
+    monkeypatch.setattr(
+        "fastretrieval.convert.verify.validate_artifacts",
+        lambda directory, expected_source=None: verify_manifest(
+            directory, expected_source=expected_source
+        ),
+    )
+
+    with pytest.raises(ValueError, match="task='dense'/'cross_encoder'"):
+        verify_converted(tmp_path, "acme/tiny-model")
