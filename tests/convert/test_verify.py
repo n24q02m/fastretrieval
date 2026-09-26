@@ -235,7 +235,8 @@ def _stub_cross_encoder_verify(monkeypatch, reference, candidate_by_name):
     monkeypatch.setattr("fastretrieval.convert.verify._onnx_embeddings", _fake_onnx)
 
 
-def test_cross_encoder_logits_verify_uses_per_variant_tolerance(tmp_path, monkeypatch):
+def test_cross_encoder_logits_verify_uses_task_default_tolerance(tmp_path, monkeypatch):
+    """Default verify của cross_encoder PASS ở đúng drift đo được trên box (1.15459)."""
     _write_artifact(
         tmp_path,
         names=("onnx/model_quantized.onnx", "onnx/model_q4f16.onnx"),
@@ -248,33 +249,52 @@ def test_cross_encoder_logits_verify_uses_per_variant_tolerance(tmp_path, monkey
         monkeypatch,
         reference,
         {
-            "model_quantized.onnx": reference + np.float32(0.05),
-            "model_q4f16.onnx": reference + np.float32(0.07),
+            "model_quantized.onnx": reference + np.float32(1.15459),
+            "model_q4f16.onnx": reference + np.float32(1.0),
         },
     )
 
     report = verify_converted(tmp_path, "acme/tiny-model")
 
     assert report["passed"] is True
-    assert report["atol_mode"] == "per_variant"
+    assert report["atol_mode"] == "task_default"
     variants = report["variant_reports"]
-    assert variants["onnx/model_quantized.onnx"]["atol"] == pytest.approx(0.1)
-    assert variants["onnx/model_q4f16.onnx"]["atol"] == pytest.approx(0.15)
+    assert variants["onnx/model_quantized.onnx"]["atol"] == pytest.approx(2.0)
+    assert variants["onnx/model_q4f16.onnx"]["atol"] == pytest.approx(2.0)
 
 
-def test_cross_encoder_logits_drift_beyond_tolerance_fails(tmp_path, monkeypatch):
+def test_cross_encoder_logits_drift_beyond_default_fails(tmp_path, monkeypatch):
     _write_artifact(tmp_path, quantization="int8", task="cross_encoder", output_dim=1)
     reference = np.array([[4.2], [-0.3], [1.7], [0.9]], dtype=np.float32)
     _stub_cross_encoder_verify(
         monkeypatch,
         reference,
-        {"model.onnx": reference + np.float32(0.5)},
+        {"model.onnx": reference + np.float32(2.5)},
     )
 
     report = verify_converted(tmp_path, "acme/tiny-model")
 
     assert report["passed"] is False
-    assert report["max_abs_diff"] == pytest.approx(0.5)
+    assert report["atol_mode"] == "task_default"
+    assert report["max_abs_diff"] == pytest.approx(2.5)
+    assert report["variant_reports"]["onnx/model.onnx"]["atol"] == pytest.approx(2.0)
+
+
+def test_explicit_atol_still_overrides_task_default_for_cross_encoder(tmp_path, monkeypatch):
+    _write_artifact(tmp_path, quantization="int8", task="cross_encoder", output_dim=1)
+    reference = np.array([[4.2], [-0.3], [1.7], [0.9]], dtype=np.float32)
+    drift = reference + np.float32(1.15459)
+    _stub_cross_encoder_verify(monkeypatch, reference, {"model.onnx": drift})
+
+    strict = verify_converted(tmp_path, "acme/tiny-model", atol=0.1)
+    assert strict["passed"] is False
+    assert strict["atol_mode"] == "override"
+    assert strict["variant_reports"]["onnx/model.onnx"]["atol"] == pytest.approx(0.1)
+
+    matched = verify_converted(tmp_path, "acme/tiny-model", atol=2.0)
+    assert matched["passed"] is True
+    assert matched["atol_mode"] == "override"
+    assert matched["variant_reports"]["onnx/model.onnx"]["atol"] == pytest.approx(2.0)
 
 
 def test_cross_encoder_output_shape_mismatch_is_an_error(tmp_path, monkeypatch):
