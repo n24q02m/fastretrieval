@@ -189,9 +189,7 @@ def test_explicit_atol_override_wins_over_per_variant_defaults(tmp_path, monkeyp
 
     assert strict["passed"] is False
     assert strict["atol_mode"] == "override"
-    assert all(
-        item["atol"] == pytest.approx(1e-2) for item in strict["variant_reports"].values()
-    )
+    assert all(item["atol"] == pytest.approx(1e-2) for item in strict["variant_reports"].values())
 
     loose = verify_converted(tmp_path, "acme/tiny-model", atol=0.5)
 

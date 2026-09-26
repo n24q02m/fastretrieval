@@ -385,8 +385,10 @@ def verify_converted(
     for artifact in artifacts:
         candidate = _onnx_embeddings(artifact, contract, source)
         _validate_output_shape(candidate, contract, f"converted {artifact.name}")
-        variant_reports[str(artifact.relative_to(Path(converted_dir)).as_posix())] = compare_embeddings(
-            reference, candidate, atol=_resolve_atol(atol, _variant_for_artifact(artifact))
+        variant_reports[str(artifact.relative_to(Path(converted_dir)).as_posix())] = (
+            compare_embeddings(
+                reference, candidate, atol=_resolve_atol(atol, _variant_for_artifact(artifact))
+            )
         )
 
     used_atols = [item["atol"] for item in variant_reports.values()]
