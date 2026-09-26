@@ -25,6 +25,12 @@ DEFAULT_FP32_ATOL = 1e-2
 # margin on int8 (8-bit weights drift narrowly) and ~2x margin on q4f16
 # (4-bit weights drift wider across architectures).
 DEFAULT_VARIANT_ATOL: dict[str, float] = {"int8": 0.1, "q4f16": 0.15}
+# Cross-encoder outputs are raw classification logits over a ±10-scale range,
+# không phải vector L2-normalized — ngưỡng hiệu chỉnh trên embedding không áp
+# dụng được (ms-marco-MiniLM-L-6-v2, e2e 2026-09-26: max_abs 1.15459, cosine
+# 0.99632 ở cả int8 lẫn q4f16). 2.0 ≈ 1.7x headroom trên drift đo được khi
+# ranking vẫn giữ nguyên.
+DEFAULT_CROSS_ENCODER_ATOL = 2.0
 
 PROBES = [
     "retrieval augmented generation",
@@ -75,10 +81,12 @@ def _variant_for_artifact(artifact: Path) -> str | None:
     return None
 
 
-def _resolve_atol(atol: float | None, variant: str | None) -> float:
-    """Explicit ``atol`` always wins; otherwise pick the per-variant default."""
+def _resolve_atol(atol: float | None, variant: str | None, task: str = "dense") -> float:
+    """Explicit ``atol`` always wins; otherwise pick the per-task default."""
     if atol is not None:
         return atol
+    if task == "cross_encoder":
+        return DEFAULT_CROSS_ENCODER_ATOL
     if variant is None:
         return DEFAULT_FP32_ATOL
     return DEFAULT_VARIANT_ATOL.get(variant, DEFAULT_FP32_ATOL)
@@ -374,10 +382,11 @@ def verify_converted(
         converted_dir: thư mục artifact đã chuyển đổi (có manifest).
         source: model id gốc trên HuggingFace.
         atol: ngưỡng tolerance tường minh, áp dụng cho mọi variant khi được
-            cung cấp (override thắng). Mặc định ``None`` chọn tolerance
-            per-variant: fp32 giữ nghiêm ``DEFAULT_FP32_ATOL``, int8/q4f16 dùng
-            ngưỡng rộng hơn trong ``DEFAULT_VARIANT_ATOL`` khớp sai số đo được
-            của chính converter.
+            cung cấp (override thắng). Mặc định ``None`` chọn tolerance theo
+            task: embedding (``dense``) dùng per-variant — fp32 giữ nghiêm
+            ``DEFAULT_FP32_ATOL``, int8/q4f16 dùng ngưỡng rộng hơn trong
+            ``DEFAULT_VARIANT_ATOL`` khớp sai số đo được của chính converter;
+            ``cross_encoder`` so raw logits với ``DEFAULT_CROSS_ENCODER_ATOL``.
 
     Returns:
         Report dict; mỗi entry trong ``variant_reports`` mang ``atol`` hiệu lực
@@ -407,18 +416,26 @@ def verify_converted(
         _validate_output_shape(candidate, contract, f"converted {artifact.name}")
         variant_reports[str(artifact.relative_to(Path(converted_dir)).as_posix())] = (
             compare_embeddings(
-                reference, candidate, atol=_resolve_atol(atol, _variant_for_artifact(artifact))
+                reference,
+                candidate,
+                atol=_resolve_atol(atol, _variant_for_artifact(artifact), contract.task),
             )
         )
 
     used_atols = [item["atol"] for item in variant_reports.values()]
+    if atol is not None:
+        atol_mode = "override"
+    elif contract.task == "cross_encoder":
+        atol_mode = "task_default"
+    else:
+        atol_mode = "per_variant"
     report = {
         "passed": all(item["passed"] for item in variant_reports.values()),
         "max_abs_diff": max(item["max_abs_diff"] for item in variant_reports.values()),
         "mean_abs_diff": max(item["mean_abs_diff"] for item in variant_reports.values()),
         "cosine": min(item["cosine"] for item in variant_reports.values()),
         "atol": atol,
-        "atol_mode": "override" if atol is not None else "per_variant",
+        "atol_mode": atol_mode,
         "atol_range": (min(used_atols), max(used_atols)) if used_atols else (atol, atol),
         "variant_reports": variant_reports,
     }
@@ -440,6 +457,7 @@ def verify_converted(
 
 
 __all__ = [
+    "DEFAULT_CROSS_ENCODER_ATOL",
     "DEFAULT_FP32_ATOL",
     "DEFAULT_VARIANT_ATOL",
     "PROBES",

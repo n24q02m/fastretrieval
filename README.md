@@ -314,6 +314,17 @@ uv run --with-requirements fastretrieval/convert/requirements.txt \
 
 `verify` validates the manifest, loads every ONNX variant through ONNX Runtime,
 and compares the converted outputs with the original model on the same probes.
+An explicit `--atol` always wins; otherwise the tolerance default follows the
+manifest task: embedding (`dense`) outputs use the per-variant defaults below,
+while `cross_encoder` outputs are raw logits compared against a single
+logit-scale default.
+
+| Task | Default tolerance |
+|---|---|
+| `dense` (full precision) | `1e-2` |
+| `dense` (int8 / q4f16) | `0.1` / `0.15` |
+| `cross_encoder` (all variants) | `2.0` |
+
 The `card` command writes a model card only after the manifest and artifact
 formats pass validation. GGUF conversion additionally requires a built
 `llama.cpp` checkout and `--llama-cpp` (or `LLAMA_CPP_HOME`).
