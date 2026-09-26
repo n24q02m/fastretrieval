@@ -198,6 +198,14 @@ def main(argv: list[str] | None = None) -> int:
             )
             if (directory / relative).exists()
         }
+        for gguf_path in sorted(
+            path
+            for path in directory.rglob("*")
+            if path.is_file() and path.suffix.lower() == ".gguf"
+        ):
+            sizes[gguf_path.relative_to(directory).as_posix()] = gguf_path.stat().st_size / (
+                1024**2
+            )
         kind = (
             "reranker"
             if contract.task in {"cross_encoder", "generative_reranker"}
