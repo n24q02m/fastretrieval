@@ -71,3 +71,75 @@ def test_missing_deps_message_names_the_requirements_file():
 
     with pytest.raises(ImportError, match="requirements.txt"):
         require_convert_deps("a_module_that_does_not_exist_anywhere")
+
+
+def test_onnx_parser_accepts_output_dim_for_cross_encoder():
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "onnx",
+            "acme/tiny-cross-encoder",
+            "--out",
+            "/tmp/out",
+            "--task",
+            "text-classification",
+            "--output-dim",
+            "3",
+        ]
+    )
+    assert args.task == "text-classification"
+    assert args.output_dim == 3
+
+
+def test_output_dim_defaults_to_none():
+    parser = build_parser()
+    args = parser.parse_args(["onnx", "acme/tiny-model", "--out", "/tmp/out"])
+    assert args.output_dim is None
+
+
+def test_main_threads_output_dim_through_local_conversion(monkeypatch):
+    captured: dict = {}
+
+    def fake_convert(source, out, **kwargs):
+        captured.update(kwargs)
+        return {"int8": 1.0}
+
+    monkeypatch.setattr(
+        "fastretrieval.convert.modal_backend.resolve_backend", lambda name: "local"
+    )
+    monkeypatch.setattr("fastretrieval.convert.onnx.convert_onnx", fake_convert)
+
+    exit_code = main(
+        [
+            "onnx",
+            "acme/tiny-cross-encoder",
+            "--out",
+            "/tmp/out",
+            "--task",
+            "text-classification",
+            "--output-dim",
+            "3",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["output_dim"] == 3
+    assert captured["task"] == "text-classification"
+
+
+def test_main_threads_output_dim_through_remote_conversion(monkeypatch):
+    captured: dict = {}
+
+    def fake_run_remote(command, **kwargs):
+        captured.update(kwargs)
+        return {"backend": "modal", "command": command}
+
+    monkeypatch.setattr(
+        "fastretrieval.convert.modal_backend.resolve_backend", lambda name: "modal"
+    )
+    monkeypatch.setattr("fastretrieval.convert.modal_backend.run_remote", fake_run_remote)
+
+    exit_code = main(["onnx", "acme/tiny-cross-encoder", "--out", "/tmp/out", "--output-dim", "1"])
+
+    assert exit_code == 0
+    assert captured["output_dim"] == 1

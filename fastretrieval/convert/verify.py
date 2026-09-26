@@ -300,8 +300,13 @@ def _reference_embeddings(source: str, contract: ModelContract) -> np.ndarray:
     import torch
     from transformers import AutoModel, AutoTokenizer
 
+    model_class = AutoModel
+    if contract.task == "cross_encoder":
+        from transformers import AutoModelForSequenceClassification
+
+        model_class = AutoModelForSequenceClassification
     tokenizer = AutoTokenizer.from_pretrained(source)
-    model = AutoModel.from_pretrained(source, torch_dtype=torch.float32).eval()
+    model = model_class.from_pretrained(source, torch_dtype=torch.float32).eval()
     tokenizer_kwargs: dict[str, Any] = {
         "return_tensors": "pt",
         "padding": True,
@@ -312,7 +317,7 @@ def _reference_embeddings(source: str, contract: ModelContract) -> np.ndarray:
     with torch.no_grad():
         batch = tokenizer(PROBES, **tokenizer_kwargs)
         outputs = model(**batch)
-        hidden = outputs.last_hidden_state
+        hidden = outputs.logits if contract.task == "cross_encoder" else outputs.last_hidden_state
         pooled = _pool_hidden(hidden, batch["attention_mask"], contract.pooling)
         reference = _normalize(pooled, contract.normalization).cpu().numpy()
     return np.asarray(reference, dtype=np.float32)
@@ -371,10 +376,11 @@ def verify_converted(
     if atol is not None and atol < 0:
         raise ValueError("atol must be non-negative")
     contract = validate_artifacts(converted_dir, expected_source=source)
-    if contract.task != "dense" or contract.modality != "text":
+    if contract.task not in {"dense", "cross_encoder"} or contract.modality != "text":
         raise ValueError(
-            f"{contract.model_id}: verify_converted supports only task='dense', "
-            f"modality='text'; got task={contract.task!r}, modality={contract.modality!r}"
+            f"{contract.model_id}: verify_converted supports only task='dense' or "
+            f"task='cross_encoder', modality='text'; got task={contract.task!r}, "
+            f"modality={contract.modality!r}"
         )
     artifacts = _onnx_artifacts(Path(converted_dir), contract)
     require_convert_deps("torch", "transformers", "onnxruntime")

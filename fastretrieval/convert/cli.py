@@ -44,6 +44,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="comma-separated subset of int8,q4f16 (default: both)",
     )
     onnx.add_argument(
+        "--output-dim",
+        type=int,
+        default=None,
+        help="explicit logits width for task=cross_encoder (num_labels); positive integer",
+    )
+    onnx.add_argument(
         "--yes-no-head",
         action="store_true",
         help="reduce a causal-LM reranker to two logits (see --yes-token/--no-token)",
@@ -134,6 +140,7 @@ def main(argv: list[str] | None = None) -> int:
                 ],
                 pooling=args.pooling,
                 normalization=args.normalize,
+                output_dim=args.output_dim,
                 yes_no=yes_no,
             )
             print(result)
@@ -146,6 +153,7 @@ def main(argv: list[str] | None = None) -> int:
             variants=[variant.strip() for variant in args.variants.split(",") if variant.strip()],
             pooling=args.pooling,
             normalization=args.normalize,
+            output_dim=args.output_dim,
             yes_no=yes_no,
         )
         for name, megabytes in sizes.items():

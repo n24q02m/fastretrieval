@@ -59,3 +59,18 @@ def test_unknown_variant_is_rejected():
 
     with pytest.raises(ValueError, match="unknown variant"):
         convert_onnx("acme/tiny", "/tmp/out", variants=["int8", "bf8"])
+
+
+def test_output_dim_must_be_a_positive_integer():
+    from fastretrieval.convert.onnx import convert_onnx
+
+    for bad in (0, -1, True):
+        with pytest.raises(ValueError, match="positive integer"):
+            convert_onnx("acme/tiny", "/tmp/out", output_dim=bad)
+
+
+def test_output_dim_and_yes_no_head_are_mutually_exclusive():
+    from fastretrieval.convert.onnx import convert_onnx
+
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        convert_onnx("acme/tiny", "/tmp/out", output_dim=2, yes_no=("yes", "no"))

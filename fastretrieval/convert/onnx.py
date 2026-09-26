@@ -147,6 +147,7 @@ def convert_onnx(
     variants: list[str] | None = None,
     pooling: str | None = None,
     normalization: bool | None = None,
+    output_dim: int | None = None,
     yes_no: tuple[str, str] | None = None,
 ) -> dict[str, float]:
     """Resolve profile, export ``source`` và ghi artifact + manifest.
@@ -159,13 +160,16 @@ def convert_onnx(
         variants: tập con của ``("int8", "q4f16")``; None nghĩa là cả hai.
         pooling: pooling tường minh; không được tự đoán khi profile thiếu.
         normalization: trạng thái chuẩn hoá output; ``None`` chỉ hợp lệ khi profile khai báo.
+        output_dim: số logit của đầu ra; chỉ hợp lệ cho task cross_encoder.
         yes_no: cặp (yes_token, no_token) để rút reranker causal-LM xuống 2 logit.
 
     Returns:
         Ánh xạ tên variant sang kích thước MB.
 
     Raises:
-        ValueError: khi ``variants`` chứa tên lạ hoặc không có variant nào.
+        ValueError: khi ``variants`` chứa tên lạ hoặc không có variant nào,
+            khi ``output_dim`` không phải số nguyên dương, khi ``output_dim``
+            được dùng cùng ``yes_no`` hoặc với task khác cross_encoder.
     """
     variants = list(variants) if variants is not None else list(VALID_VARIANTS)
     unknown = [variant for variant in variants if variant not in VALID_VARIANTS]
@@ -175,16 +179,30 @@ def convert_onnx(
         raise ValueError("at least one variant is required")
     if len(set(variants)) != len(variants):
         raise ValueError("variants must not contain duplicates")
+    if output_dim is not None and (
+        not isinstance(output_dim, int) or isinstance(output_dim, bool) or output_dim <= 0
+    ):
+        raise ValueError("output_dim must be a positive integer")
+    if output_dim is not None and yes_no is not None:
+        raise ValueError(
+            "output_dim and yes_no are mutually exclusive; a yes/no head already "
+            "fixes the output at two logits"
+        )
 
     from fastretrieval.convert.profiles import resolve_profile
 
     profile = resolve_profile(source, task=task, modality=modality)
+    if output_dim is not None and profile.task != "cross_encoder":
+        raise ValueError(
+            f"output_dim is only supported for task=cross_encoder; resolved task is {profile.task!r}"
+        )
     require_convert_deps("torch", "transformers", "optimum", "onnx", "onnxruntime")
 
     out_dir = Path(out_dir)
     contract = profile.build_contract(
         pooling=pooling,
         normalization=normalization,
+        output_dim=output_dim,
         artifact_formats=("onnx",),
         quantization=",".join(variants),
         exporter_version=_exporter_version(),

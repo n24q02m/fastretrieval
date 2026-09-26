@@ -6,17 +6,28 @@ from fastretrieval.convert.manifest import write_manifest
 from fastretrieval.convert.verify import compare_embeddings, verify_converted, verify_manifest
 
 
-def _write_artifact(tmp_path, *, formats=("onnx",), names=("onnx/model.onnx",), quantization=None):
+def _write_artifact(
+    tmp_path,
+    *,
+    formats=("onnx",),
+    names=("onnx/model.onnx",),
+    quantization=None,
+    task="dense",
+    output_dim=3,
+    output_shape=(3,),
+    pooling="MEAN",
+    normalization=False,
+):
     contract = ModelContract(
         model_id="acme/tiny-model",
         source="acme/tiny-model",
-        task="dense",
+        task=task,
         modality="text",
         model_family="bert",
-        output_dim=3,
-        output_shape=(3,),
-        pooling="MEAN",
-        normalization=False,
+        output_dim=output_dim,
+        output_shape=output_shape,
+        pooling=pooling,
+        normalization=normalization,
         max_seq_len=32,
         preprocessor=PreprocessorSpec(kind="text"),
         artifact_formats=formats,
@@ -202,3 +213,40 @@ def test_negative_atol_is_rejected(tmp_path):
     _write_artifact(tmp_path, names=("onnx/model.onnx",))
     with pytest.raises(ValueError, match="non-negative"):
         verify_converted(tmp_path, "acme/tiny-model", atol=-1e-2)
+
+
+def test_verify_accepts_cross_encoder_manifest(tmp_path, monkeypatch):
+    _write_artifact(
+        tmp_path,
+        task="cross_encoder",
+        output_dim=2,
+        output_shape=(2,),
+        pooling="CLS",
+        names=("onnx/model.onnx",),
+    )
+    reference = np.zeros((1, 2), dtype=np.float32)
+    _stub_verify(monkeypatch, reference, {"model.onnx": reference})
+
+    report = verify_converted(tmp_path, "acme/tiny-model")
+
+    assert report["passed"] is True
+    assert len(report["variant_reports"]) == 1
+
+
+def test_verify_still_rejects_tasks_outside_the_supported_set(tmp_path, monkeypatch):
+    _write_artifact(
+        tmp_path,
+        task="generative_reranker",
+        output_dim=2,
+        output_shape=(2,),
+        pooling="CLS",
+        names=("onnx/model.onnx",),
+    )
+    _stub_verify(
+        monkeypatch,
+        np.zeros((1, 2), dtype=np.float32),
+        {"model.onnx": np.zeros((1, 2), dtype=np.float32)},
+    )
+
+    with pytest.raises(ValueError, match="supports only task"):
+        verify_converted(tmp_path, "acme/tiny-model")

@@ -118,6 +118,28 @@ def test_cross_encoder_profile_builds_explicit_output_contract():
     assert contract.output_shape == (1,)
 
 
+def test_cross_encoder_manifest_round_trips_output_dim(tmp_path: Path):
+    source = FIXTURES / "tiny-e5"
+    contract = resolve_profile(source, task="text-classification", modality="text").build_contract(
+        pooling="cls",
+        normalization=False,
+        output_dim=1,
+        artifact_formats=("onnx",),
+        exporter_version="fixture",
+    )
+
+    manifest = write_manifest(tmp_path, contract)
+
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == 1
+    assert payload["task"] == "cross_encoder"
+    assert payload["output_dim"] == 1
+
+    loaded = load_manifest(tmp_path)
+    assert loaded == contract
+    assert loaded.output_dim == 1
+
+
 def test_unsupported_modality_fails_closed_with_context():
     source = FIXTURES / "tiny-e5"
 
