@@ -118,6 +118,44 @@ def test_cross_encoder_profile_builds_explicit_output_contract():
     assert contract.output_shape == (1,)
 
 
+@pytest.mark.parametrize("bad_dim", [0, -1, True])
+def test_output_dim_must_be_a_positive_integer(bad_dim: int):
+    profile = resolve_profile(FIXTURES / "tiny-e5", task="cross_encoder", modality="text")
+
+    with pytest.raises(ValueError, match="output_dim must be a positive integer"):
+        profile.build_contract(
+            pooling="mean",
+            normalization=False,
+            output_dim=bad_dim,
+            artifact_formats=("onnx",),
+        )
+
+
+def test_output_dim_and_yes_no_head_are_mutually_exclusive():
+    profile = resolve_profile(FIXTURES / "qwen3", task="generative-reranker", modality="text")
+
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        profile.build_contract(
+            pooling="last_token",
+            normalization=False,
+            output_dim=2,
+            artifact_formats=("onnx",),
+            yes_no=("yes", "no"),
+        )
+
+
+def test_yes_no_head_stays_restricted_to_generative_reranker():
+    profile = resolve_profile(FIXTURES / "tiny-e5", task="cross_encoder", modality="text")
+
+    with pytest.raises(ValueError, match="only supported for generative_reranker"):
+        profile.build_contract(
+            pooling="mean",
+            normalization=False,
+            artifact_formats=("onnx",),
+            yes_no=("yes", "no"),
+        )
+
+
 def test_unsupported_modality_fails_closed_with_context():
     source = FIXTURES / "tiny-e5"
 

@@ -298,10 +298,22 @@ def _validate_output_shape(array: np.ndarray, contract: ModelContract, label: st
 
 def _reference_embeddings(source: str, contract: ModelContract) -> np.ndarray:
     import torch
-    from transformers import AutoModel, AutoTokenizer
+    from transformers import AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(source)
-    model = AutoModel.from_pretrained(source, torch_dtype=torch.float32).eval()
+    if contract.task == "cross_encoder":
+        # Cross-encoder chuẩn ms-marco export AutoModelForSequenceClassification
+        # (optimum task=text-classification); đầu ra đối chiếu là logits thô,
+        # không phải hidden states — model class thực quyết định ngữ nghĩa output.
+        from transformers import AutoModelForSequenceClassification
+
+        model = AutoModelForSequenceClassification.from_pretrained(
+            source, torch_dtype=torch.float32
+        ).eval()
+    else:
+        from transformers import AutoModel
+
+        model = AutoModel.from_pretrained(source, torch_dtype=torch.float32).eval()
     tokenizer_kwargs: dict[str, Any] = {
         "return_tensors": "pt",
         "padding": True,
@@ -312,9 +324,12 @@ def _reference_embeddings(source: str, contract: ModelContract) -> np.ndarray:
     with torch.no_grad():
         batch = tokenizer(PROBES, **tokenizer_kwargs)
         outputs = model(**batch)
-        hidden = outputs.last_hidden_state
-        pooled = _pool_hidden(hidden, batch["attention_mask"], contract.pooling)
-        reference = _normalize(pooled, contract.normalization).cpu().numpy()
+        if contract.task == "cross_encoder":
+            reference = np.asarray(outputs.logits.cpu(), dtype=np.float32)
+        else:
+            hidden = outputs.last_hidden_state
+            pooled = _pool_hidden(hidden, batch["attention_mask"], contract.pooling)
+            reference = _normalize(pooled, contract.normalization).cpu().numpy()
     return np.asarray(reference, dtype=np.float32)
 
 
@@ -371,10 +386,15 @@ def verify_converted(
     if atol is not None and atol < 0:
         raise ValueError("atol must be non-negative")
     contract = validate_artifacts(converted_dir, expected_source=source)
-    if contract.task != "dense" or contract.modality != "text":
+    if contract.task not in {"dense", "cross_encoder"} or contract.modality != "text":
         raise ValueError(
-            f"{contract.model_id}: verify_converted supports only task='dense', "
+            f"{contract.model_id}: verify_converted supports only task='dense'/'cross_encoder', "
             f"modality='text'; got task={contract.task!r}, modality={contract.modality!r}"
+        )
+    if contract.task == "cross_encoder" and contract.normalization:
+        raise ValueError(
+            f"{contract.model_id}: cross_encoder verification requires normalization=False; "
+            "classification logits are raw scores, not L2-normalized vectors"
         )
     artifacts = _onnx_artifacts(Path(converted_dir), contract)
     require_convert_deps("torch", "transformers", "onnxruntime")

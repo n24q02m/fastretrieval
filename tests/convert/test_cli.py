@@ -66,6 +66,114 @@ def test_no_command_exits_nonzero(capsys):
     assert main([]) != 0
 
 
+def test_parser_accepts_output_dim_for_cross_encoder_exports():
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "onnx",
+            "cross-encoder/ms-marco-MiniLM-L-6-v2",
+            "--out",
+            "/tmp/out",
+            "--task",
+            "text-classification",
+            "--pooling",
+            "cls",
+            "--no-normalize",
+            "--output-dim",
+            "1",
+        ]
+    )
+    assert args.output_dim == 1
+    assert args.yes_no_head is False
+
+
+def test_output_dim_defaults_to_none():
+    parser = build_parser()
+    args = parser.parse_args(["onnx", "acme/tiny-model", "--out", "/tmp/out"])
+    assert args.output_dim is None
+
+
+def test_gguf_command_has_no_output_dim_flag():
+    """output-dim chỉ có ngữ nghĩa với export ONNX classification; gguf không nhận."""
+    parser = build_parser()
+    choices = cast(
+        dict[str, argparse.ArgumentParser],
+        [a for a in parser._actions if a.dest == "command"][0].choices,
+    )
+    gguf = choices["gguf"]
+    flags = {opt for a in gguf._actions for opt in a.option_strings}
+    assert "--output-dim" not in flags
+
+
+def test_onnx_command_passes_output_dim_to_converter(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_convert_onnx(source: str, out_dir: str, **kwargs: object) -> dict[str, float]:
+        captured.update(kwargs)
+        return {}
+
+    monkeypatch.setattr(
+        "fastretrieval.convert.modal_backend.resolve_backend", lambda backend: "local"
+    )
+    monkeypatch.setattr("fastretrieval.convert.onnx.convert_onnx", fake_convert_onnx)
+
+    exit_code = main(
+        [
+            "onnx",
+            "cross-encoder/ms-marco-MiniLM-L-6-v2",
+            "--out",
+            "/tmp/out",
+            "--task",
+            "text-classification",
+            "--pooling",
+            "cls",
+            "--no-normalize",
+            "--output-dim",
+            "1",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["output_dim"] == 1
+    assert captured["yes_no"] is None
+    assert captured["task"] == "text-classification"
+
+
+def test_onnx_remote_route_receives_output_dim(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_run_remote(command: str, **kwargs: object) -> dict[str, object]:
+        captured["command"] = command
+        captured.update(kwargs)
+        return {"backend": "modal"}
+
+    monkeypatch.setattr(
+        "fastretrieval.convert.modal_backend.resolve_backend", lambda backend: "modal"
+    )
+    monkeypatch.setattr("fastretrieval.convert.modal_backend.run_remote", fake_run_remote)
+
+    exit_code = main(
+        [
+            "onnx",
+            "cross-encoder/ms-marco-MiniLM-L-6-v2",
+            "--out",
+            "/tmp/out",
+            "--task",
+            "text-classification",
+            "--pooling",
+            "cls",
+            "--no-normalize",
+            "--output-dim",
+            "1",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["command"] == "onnx"
+    assert captured["output_dim"] == 1
+    assert captured["yes_no"] is None
+
+
 def test_missing_deps_message_names_the_requirements_file():
     from fastretrieval.convert import require_convert_deps
 

@@ -147,6 +147,7 @@ def convert_onnx(
     variants: list[str] | None = None,
     pooling: str | None = None,
     normalization: bool | None = None,
+    output_dim: int | None = None,
     yes_no: tuple[str, str] | None = None,
 ) -> dict[str, float]:
     """Resolve profile, export ``source`` và ghi artifact + manifest.
@@ -159,6 +160,9 @@ def convert_onnx(
         variants: tập con của ``("int8", "q4f16")``; None nghĩa là cả hai.
         pooling: pooling tường minh; không được tự đoán khi profile thiếu.
         normalization: trạng thái chuẩn hoá output; ``None`` chỉ hợp lệ khi profile khai báo.
+        output_dim: số chiều output khai báo trong contract; bắt buộc cho
+            ``task=cross_encoder`` khi không dùng ``yes_no`` (vd ``1`` cho
+            cross-encoder phân loại nhị phân chuẩn ms-marco).
         yes_no: cặp (yes_token, no_token) để rút reranker causal-LM xuống 2 logit.
 
     Returns:
@@ -185,6 +189,7 @@ def convert_onnx(
     contract = profile.build_contract(
         pooling=pooling,
         normalization=normalization,
+        output_dim=output_dim,
         artifact_formats=("onnx",),
         quantization=",".join(variants),
         exporter_version=_exporter_version(),
