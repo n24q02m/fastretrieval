@@ -1,0 +1,36 @@
+{
+  "artifact_formats": [
+    "onnx"
+  ],
+  "exporter_version": "optimum 2.1.0",
+  "max_seq_len": 512,
+  "modality": "text",
+  "model_family": "bert",
+  "model_id": "sentence-transformers/paraphrase-MiniLM-L3-v2",
+  "normalization": true,
+  "output_dim": 384,
+  "output_shape": [
+    384
+  ],
+  "pooling": "MEAN",
+  "preprocessor": {
+    "config_file": "preprocessor_config.json",
+    "image_mean": null,
+    "image_size": null,
+    "image_std": null,
+    "kind": "text"
+  },
+  "quantization": "int8,q4f16",
+  "schema_version": 1,
+  "source": "sentence-transformers/paraphrase-MiniLM-L3-v2",
+  "task": "dense",
+  "tokenizer_files": [
+    "config.json",
+    "tokenizer.json",
+    "tokenizer_config.json"
+  ],
+  "variants": [
+    "int8",
+    "q4f16"
+  ]
+}
