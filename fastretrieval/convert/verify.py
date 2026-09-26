@@ -7,7 +7,7 @@ một bộ probe qua model gốc và ONNX Runtime để bắt sai lệch trướ
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import numpy as np
@@ -16,6 +16,15 @@ from loguru import logger
 from fastretrieval.contract import ModelContract
 from fastretrieval.convert import require_convert_deps
 from fastretrieval.convert.manifest import load_manifest
+
+# Strict gate for full-precision (or unrecognized) artifacts.
+DEFAULT_FP32_ATOL = 1e-2
+# Per-variant defaults for the converter's own quantized outputs. Measured on
+# sentence-transformers/all-MiniLM-L6-v2 (e2e 2026-09-26): int8 max_abs 0.0756
+# (cosine 0.9496), q4f16 max_abs 0.0764 (cosine 0.9248). Defaults keep ~30%
+# margin on int8 (8-bit weights drift narrowly) and ~2x margin on q4f16
+# (4-bit weights drift wider across architectures).
+DEFAULT_VARIANT_ATOL: dict[str, float] = {"int8": 0.1, "q4f16": 0.15}
 
 PROBES = [
     "retrieval augmented generation",
@@ -50,6 +59,29 @@ def _onnx_artifacts(directory: Path, contract: ModelContract) -> tuple[Path, ...
     if not artifacts:
         raise FileNotFoundError(f"{contract.model_id}: no ONNX artifact found under {directory}")
     return artifacts
+
+
+def _variant_for_artifact(artifact: Path) -> str | None:
+    """Map an artifact filename to its quantization variant (None = full precision).
+
+    Follows the converter's naming convention in ``convert/onnx.py``:
+    ``model_quantized.onnx`` (int8) and ``model_q4f16.onnx`` (q4f16).
+    """
+    name = PurePosixPath(artifact.as_posix()).name.lower()
+    if "q4f16" in name:
+        return "q4f16"
+    if "int8" in name or "quantized" in name:
+        return "int8"
+    return None
+
+
+def _resolve_atol(atol: float | None, variant: str | None) -> float:
+    """Explicit ``atol`` always wins; otherwise pick the per-variant default."""
+    if atol is not None:
+        return atol
+    if variant is None:
+        return DEFAULT_FP32_ATOL
+    return DEFAULT_VARIANT_ATOL.get(variant, DEFAULT_FP32_ATOL)
 
 
 def compare_embeddings(reference: Any, candidate: Any, *, atol: float) -> dict[str, Any]:
@@ -319,9 +351,25 @@ def _onnx_embeddings(artifact: Path, contract: ModelContract, source: str) -> np
 
 
 def verify_converted(
-    converted_dir: str | Path, source: str, *, atol: float = 1e-2
+    converted_dir: str | Path, source: str, *, atol: float | None = None
 ) -> dict[str, Any]:
-    """So cùng bộ probe qua model gốc và artifact ONNX đã chuyển đổi."""
+    """So cùng bộ probe qua model gốc và artifact ONNX đã chuyển đổi.
+
+    Args:
+        converted_dir: thư mục artifact đã chuyển đổi (có manifest).
+        source: model id gốc trên HuggingFace.
+        atol: ngưỡng tolerance tường minh, áp dụng cho mọi variant khi được
+            cung cấp (override thắng). Mặc định ``None`` chọn tolerance
+            per-variant: fp32 giữ nghiêm ``DEFAULT_FP32_ATOL``, int8/q4f16 dùng
+            ngưỡng rộng hơn trong ``DEFAULT_VARIANT_ATOL`` khớp sai số đo được
+            của chính converter.
+
+    Returns:
+        Report dict; mỗi entry trong ``variant_reports`` mang ``atol`` hiệu lực
+        của variant đó.
+    """
+    if atol is not None and atol < 0:
+        raise ValueError("atol must be non-negative")
     contract = validate_artifacts(converted_dir, expected_source=source)
     if contract.task != "dense" or contract.modality != "text":
         raise ValueError(
@@ -337,16 +385,21 @@ def verify_converted(
     for artifact in artifacts:
         candidate = _onnx_embeddings(artifact, contract, source)
         _validate_output_shape(candidate, contract, f"converted {artifact.name}")
-        variant_reports[str(artifact.relative_to(Path(converted_dir)))] = compare_embeddings(
-            reference, candidate, atol=atol
+        variant_reports[str(artifact.relative_to(Path(converted_dir)).as_posix())] = (
+            compare_embeddings(
+                reference, candidate, atol=_resolve_atol(atol, _variant_for_artifact(artifact))
+            )
         )
 
+    used_atols = [item["atol"] for item in variant_reports.values()]
     report = {
         "passed": all(item["passed"] for item in variant_reports.values()),
         "max_abs_diff": max(item["max_abs_diff"] for item in variant_reports.values()),
         "mean_abs_diff": max(item["mean_abs_diff"] for item in variant_reports.values()),
         "cosine": min(item["cosine"] for item in variant_reports.values()),
         "atol": atol,
+        "atol_mode": "override" if atol is not None else "per_variant",
+        "atol_range": (min(used_atols), max(used_atols)) if used_atols else (atol, atol),
         "variant_reports": variant_reports,
     }
     report.update(
@@ -367,6 +420,8 @@ def verify_converted(
 
 
 __all__ = [
+    "DEFAULT_FP32_ATOL",
+    "DEFAULT_VARIANT_ATOL",
     "PROBES",
     "compare_embeddings",
     "validate_artifacts",

@@ -95,7 +95,13 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("converted", help="directory holding the converted model")
     verify.add_argument("--source", required=True, help="original HuggingFace model id")
     verify.add_argument(
-        "--atol", type=float, default=1e-2, help="absolute tolerance (default: 1e-2)"
+        "--atol",
+        type=float,
+        default=None,
+        help=(
+            "absolute tolerance override applied to every variant "
+            "(default: per-variant — fp32 1e-2, int8 0.1, q4f16 0.15)"
+        ),
     )
 
     card = sub.add_parser("card", help="write a model card for a converted directory")
