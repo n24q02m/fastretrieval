@@ -473,7 +473,7 @@ to receive security fixes while consumers migrate.
 
 ## Releases and Deployment
 
-Merges to `main` release automatically: [`.github/workflows/cd.yml`](.github/workflows/cd.yml) runs python-semantic-release (v10) and publishes the version to [PyPI](https://pypi.org/project/fastretrieval/) via Trusted Publishing (`PUBLISH_PYPI=true`). Beta prereleases are cut only by a manual `workflow_dispatch` with `release_type=beta`. Before any release, the `readme-sync` job verifies that `pyproject.toml` points at the README shipped to the registry, so README edits pass through the same gate. The Docker, MCP-registry, and downstream-notify jobs in the CD template are gated off for this repo (`PUBLISH_DOCKER`, `PUBLISH_MCP_REGISTRY`, and `NOTIFY_DOWNSTREAM` are unset).
+Releases are cut only by a manual `workflow_dispatch` of [`.github/workflows/cd.yml`](.github/workflows/cd.yml) with `release_type=beta` or `release_type=stable`; merging to `main` never releases. The workflow runs python-semantic-release (v10) and publishes the version to [PyPI](https://pypi.org/project/fastretrieval/) via Trusted Publishing (`PUBLISH_PYPI=true`). Before any release, the `readme-sync` job verifies that `pyproject.toml` points at the README shipped to the registry, so README edits pass through the same gate. The Docker, MCP-registry, and downstream-notify jobs in the CD template are gated off for this repo (`PUBLISH_DOCKER`, `PUBLISH_MCP_REGISTRY`, and `NOTIFY_DOWNSTREAM` are unset).
 
 The public reference page is [mcp.n24q02m.com/reference/fastretrieval/](https://mcp.n24q02m.com/reference/fastretrieval/). `fastretrieval` is a library: it ships no MCP endpoint and has no hosted deployment.
 
