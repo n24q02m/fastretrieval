@@ -63,7 +63,13 @@ def find_llama_cpp(explicit: str | None = None) -> Path:
 
 
 def _run(cmd: list[str], what: str) -> None:
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    try:
+        # SECURITY: Add timeout to prevent indefinite hang on malformed models (DoS prevention)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=3600)
+    except subprocess.TimeoutExpired as exc:
+        logger.error("{} timed out after 3600 seconds", what)
+        raise RuntimeError(f"{what} timed out") from exc
+
     if result.returncode != 0:
         logger.error("{} failed:\n{}", what, result.stderr)
         raise RuntimeError(f"{what} exited with code {result.returncode}")
