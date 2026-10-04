@@ -21,7 +21,8 @@
       "before 5am"
     ],
     "automerge": true,
-    "automergeType": "pr"
+    "automergeType": "pr",
+    "platformAutomerge": true
   },
   "packageRules": [
     {
@@ -53,6 +54,7 @@
       "groupSlug": "non-major-dev",
       "automerge": true,
       "automergeType": "pr",
+      "platformAutomerge": true,
       "minimumReleaseAge": "7 days"
     },
     {
@@ -64,6 +66,7 @@
       "groupSlug": "all-patch",
       "automerge": true,
       "automergeType": "pr",
+      "platformAutomerge": true,
       "minimumReleaseAge": "7 days"
     },
     {
@@ -79,6 +82,20 @@
       "groupSlug": "gha-digests",
       "automerge": true,
       "automergeType": "pr",
+      "platformAutomerge": true,
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "Auto-merge pin updates after cooldown",
+      "matchUpdateTypes": [
+        "pin",
+        "pinDigest"
+      ],
+      "groupName": "pin updates",
+      "groupSlug": "all-pins",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
       "minimumReleaseAge": "7 days"
     },
     {
