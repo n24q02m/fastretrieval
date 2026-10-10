@@ -367,7 +367,7 @@ dev = [
 requires-dist = [
     { name = "fastretrieval", extras = ["gguf", "image"], marker = "extra == 'all'" },
     { name = "huggingface-hub", specifier = ">=1.33.0,<2.0" },
-    { name = "llama-cpp-python", marker = "extra == 'gguf'", specifier = ">=0.3.35" },
+    { name = "llama-cpp-python", marker = "extra == 'gguf'", specifier = ">=0.3.36" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "numpy", specifier = ">=2.4.6,<2.5" },
     { name = "onnxruntime", marker = "python_full_version >= '3.11'", specifier = ">1.20.0" },
@@ -384,7 +384,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
-    { name = "ruff", specifier = ">=0.16.9" },
+    { name = "ruff", specifier = ">=0.16.10" },
     { name = "syrupy", specifier = ">=6.1.1" },
     { name = "ty", specifier = ">=0.0.84" },
 ]
