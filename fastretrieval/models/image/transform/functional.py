@@ -128,7 +128,8 @@ def resize(
 
 
 def rescale(image: NumpyArray, scale: float, dtype: type = np.float32) -> NumpyArray:
-    return (image * scale).astype(dtype)
+    # ⚡ Bolt: Fast rescaling by preventing costly intermediate float64 array creation and casting
+    return np.multiply(image, scale, out=np.empty_like(image, dtype=dtype), casting="unsafe")
 
 
 def pil2ndarray(image: Image.Image | NumpyArray) -> NumpyArray:
@@ -217,13 +218,17 @@ def resize_ndarray(
     # Handle different dtypes
     if img_hwc.dtype == np.float32 or img_hwc.dtype == np.float64:
         # Assume normalized, scale to 0-255 for PIL
-        img_hwc_scaled = (img_hwc * 255).astype(np.uint8)
+        # ⚡ Bolt: Fast rescaling by preventing costly intermediate float64 array creation and casting
+        img_hwc_scaled = np.multiply(
+            img_hwc, 255, out=np.empty_like(img_hwc, dtype=np.uint8), casting="unsafe"
+        )
         pil_img = Image.fromarray(img_hwc_scaled, mode="RGB")
         resized = pil_img.resize(size, resample)
         result = np.array(resized).astype(np.float32) / 255.0
     else:
         # uint8 or similar
-        pil_img = Image.fromarray(img_hwc.astype(np.uint8), mode="RGB")
+        # ⚡ Bolt: Fast type conversion by skipping allocation when already target type
+        pil_img = Image.fromarray(img_hwc.astype(np.uint8, copy=False), mode="RGB")
         resized = pil_img.resize(size, resample)
         result = np.array(resized)
 
