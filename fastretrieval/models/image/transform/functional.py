@@ -128,7 +128,9 @@ def resize(
 
 
 def rescale(image: NumpyArray, scale: float, dtype: type = np.float32) -> NumpyArray:
-    return (image * scale).astype(dtype)
+    # ⚡ Bolt: Fast rescaling by performing the operation directly in the target dtype
+    # This prevents the creation of a costly intermediate float64 array during float scalar multiplication
+    return np.multiply(image, scale, out=np.empty_like(image, dtype=dtype), casting="unsafe")
 
 
 def pil2ndarray(image: Image.Image | NumpyArray) -> NumpyArray:
