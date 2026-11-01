@@ -525,3 +525,66 @@ jobs:
           subjectPattern: ^(?![A-Z]).+$
           subjectPatternError: |
             The subject must not start with an uppercase character.
+
+  # ============================================================================
+  # Convert smoke test (merged from convert.yml; weekly schedule + dispatch).
+  # Lives in CI, not CD: the release workflow is dispatch-only, and this check
+  # publishes nothing -- it only proves the converter still works end to end.
+  # ============================================================================
+  convert-smoke:
+    name: Convert smoke test
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: Convert a tiny model end to end
+        env:
+          MODEL: hf-internal-testing/tiny-random-BertModel
+        run: |
+          uv run --with-requirements fastretrieval/convert/requirements.txt \
+            python -m fastretrieval.convert onnx "$MODEL" \
+            --out ./smoke-out --pooling mean --normalize
+
+      - name: Check the artifacts exist
+        run: |
+          test -f ./smoke-out/onnx/model_quantized.onnx
+          test -f ./smoke-out/onnx/model_q4f16.onnx
+          test -f ./smoke-out/fastretrieval-manifest.json
+          test -f ./smoke-out/config.json
+          test -f ./smoke-out/tokenizer.json
+          test -f ./smoke-out/tokenizer_config.json
+
+      - name: Verify parity and load the runtime inputs
+        env:
+          MODEL: hf-internal-testing/tiny-random-BertModel
+        run: |
+          uv run --with-requirements fastretrieval/convert/requirements.txt \
+            python -m fastretrieval.convert verify ./smoke-out --source "$MODEL"
+          uv run --with-requirements fastretrieval/convert/requirements.txt python - <<'PY'
+          from pathlib import Path
+
+          import onnxruntime as ort
+
+          from fastretrieval.common.preprocessor_utils import load_tokenizer
+
+          root = Path("smoke-out")
+          load_tokenizer(root)
+          for artifact in sorted((root / "onnx").glob("*.onnx")):
+              session = ort.InferenceSession(
+                  str(artifact), providers=["CPUExecutionProvider"]
+              )
+              assert session.get_inputs(), artifact
+              assert session.get_outputs(), artifact
+          print("converted ONNX variants load with runtime tokenizer and ORT")
+          PY
