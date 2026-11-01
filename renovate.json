@@ -176,6 +176,5 @@
     "postUpdateOptions": [
       "gomodTidy"
     ]
-  },
-  "commitMessagePrefix": "fix(deps):"
+  }
 }
