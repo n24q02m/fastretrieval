@@ -44,13 +44,13 @@ Repository = "https://github.com/n24q02m/fastretrieval"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.1.1",
+    "pytest>=9.2.0",
     "pytest-cov>=7.1.0",
     "pytest-xdist>=3.8.0",
     "pytest-timeout>=2.4.0",
     "syrupy>=6.1.1",
     "ruff>=0.17.3",
-    "ty>=0.0.92",
+    "ty>=0.0.95",
 ]
 
 [build-system]

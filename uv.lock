@@ -387,13 +387,13 @@ provides-extras = ["gguf", "image", "all"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest", specifier = ">=9.2.0" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "ruff", specifier = ">=0.17.3" },
     { name = "syrupy", specifier = ">=6.1.1" },
-    { name = "ty", specifier = ">=0.0.92" },
+    { name = "ty", specifier = ">=0.0.95" },
 ]
 
 [[package]]
