@@ -63,6 +63,7 @@ Supported runtimes are CPython 3.11, 3.12, 3.13, and 3.14.
 | Late interaction multimodal (ColPali) | `LateInteractionMultimodalEmbedding` | `image` |
 | Cross-encoder rerank | `TextCrossEncoder` | none |
 | Generative rerank (yes/no logit) | `TextCrossEncoder` with a YesNo model | none |
+| Shared `/embed` + `/rerank` HTTP server | `fastretrieval.server` | `server` |
 
 ## Table of contents
 
@@ -71,6 +72,7 @@ Supported runtimes are CPython 3.11, 3.12, 3.13, and 3.14.
 - [Supported Models](#supported-models)
 - [Installation](#installation)
 - [Usage](#usage)
+- [HTTP server](#http-server)
 - [Converting your own model](#converting-your-own-model)
 - [Configuration](#configuration)
 - [Migrating from qwen3-embed](#migrating-from-qwen3-embed)
@@ -157,6 +159,7 @@ API; custom registration does not change the facade defaults.
 pip install fastretrieval            # text only
 pip install "fastretrieval[image]"   # adds image and ColPali
 pip install "fastretrieval[all]"     # adds GGUF backend too
+pip install "fastretrieval[server]"  # adds the /embed + /rerank HTTP server
 
 # For GGUF support
 pip install fastretrieval[gguf]
@@ -287,6 +290,44 @@ deps don't co-resolve with the lean runtime pins):
 from fastretrieval.export import export_to_onnx
 
 export_to_onnx("intfloat/multilingual-e5-base", "./e5-onnx")
+```
+
+## HTTP server
+
+`fastretrieval[server]` ships a small ASGI service so several processes share one
+model instance instead of each loading its own ONNX/GGUF session.
+
+```bash
+pip install "fastretrieval[server]"
+fastretrieval-server --host 127.0.0.1 --port 9800
+# or: python -m fastretrieval.server --port 9800
+```
+
+| Route | Request | Response |
+|---|---|---|
+| `GET /health` | -- | `{status, version}` |
+| `GET /models` | -- | `{embed: {alias: model}, rerank: {alias: model}}` |
+| `POST /embed` | `{input: [str], model?, dims?}` | `{data: [[float]], model, dims}` |
+| `POST /rerank` | `{query, documents: [str], model?, top_n?}` | `{results: [{index, relevance_score}], model}` |
+
+- `dims` accepts `32..1024` (default `1024`): Qwen3 reference embeddings are
+  MRL-truncated before L2 normalization.
+- `model` takes an alias (`qwen3-0.6b`, `qwen3-0.6b-q4f16`, `qwen3-0.6b-gguf`,
+  `qwen3-rerank-0.6b`, `qwen3-rerank-0.6b-q4f16`, `qwen3-rerank-0.6b-yesno`,
+  `qwen3-rerank-0.6b-gguf`) or any registered model name, which passes through
+  unchanged.
+- A GGUF alias without `fastretrieval[gguf]` returns `503` with the install
+  hint; an unregistered model or out-of-range `dims` returns `400`.
+- Artifacts download from Hugging Face into the cache on first use:
+  `FASTRETRIEVAL_CACHE_PATH`, or `--cache-dir`. Inference threads:
+  `FASTRETRIEVAL_THREADS`, or `--threads`.
+
+The container image runs this server on `0.0.0.0:9800`, with the model cache on
+a `/data` volume and a `HEALTHCHECK` on `/health`:
+
+```bash
+docker build -t fastretrieval .
+docker run --rm -p 9800:9800 -v fastretrieval-models:/data fastretrieval
 ```
 
 ## Converting your own model

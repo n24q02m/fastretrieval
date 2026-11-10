@@ -1,17 +1,22 @@
 # syntax=docker/dockerfile:1
-# Multi-stage build for fastretrieval
-# Python 3.13 + SearXNG + Playwright chromium
-# All-in-one: no external Docker or services needed
+# Container image for the fastretrieval model runtime and its shared HTTP
+# surface (``fastretrieval.server``: /embed, /rerank, /health, /models).
+#
+#   docker build -t fastretrieval .
+#   docker run --rm -p 9800:9800 -v fastretrieval-models:/data fastretrieval
+#
+# Model artifacts download from Hugging Face on first request, so /data must be
+# a volume to survive a container restart: a cold cache re-downloads ~1.2 GB.
 
-# ========================
-# Stage 1: Builder
-# ========================
-# Use python:3.13-slim (Debian bookworm) which tracks the latest 3.13 patch.
-# The astral-sh/uv Docker image bundles its own, older interpreter build, so it
-# is used only as a source for the uv binary.
-# Copy the uv binary from the standalone uv image (always latest).
-FROM python:3.13-slim-bookworm@sha256:bb73517d48bd32016e15eade0c009b2724ec3a025a9975b5cd9b251d0dcadb33 AS builder
-COPY --from=ghcr.io/astral-sh/uv:latest@sha256:f513a91fc62fe7c17567eee97230dd198e43edb8a9fbecca843714a4358fe1bc /uv /uvx /usr/local/bin/
+# =============================================================================
+# Stage 1: builder -- resolve the locked dependency set and build the wheel
+# =============================================================================
+# Same Python minor as the runtime stage: a .venv built on one minor is not
+# portable to another (binary wheels, ABI tags).
+FROM python:3.13-slim-bookworm AS builder
+
+# The uv binary only; its own bundled interpreter is older than this base.
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -19,124 +24,47 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
-# Install git (required by SearXNG build system for version detection)
-RUN apt-get update && apt-get install -y --no-install-recommends git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install dependencies first (cached when deps don't change)
-# Strip [tool.uv.sources] local path overrides so uv resolves from PyPI
-COPY pyproject.toml uv.lock ./
-RUN sed -i '/^\[tool\.uv\.sources\]/,/^$/d' pyproject.toml && \
-    cp uv.lock /tmp/uv.lock.docker
+# Dependency layer: manifest + lockfile only, so editing source never
+# re-resolves the dependency graph. --no-install-project keeps the project
+# itself out of this layer for the same reason.
+COPY pyproject.toml uv.lock README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-dev
+    uv sync --frozen --no-dev --extra server --no-install-project
 
-# Copy application code and install the project
-COPY . /app
-RUN sed -i '/^\[tool\.uv\.sources\]/,/^$/d' pyproject.toml && \
-    cp /tmp/uv.lock.docker uv.lock
+# Project layer: --no-editable installs a real copy into site-packages, so the
+# runtime stage needs no source tree at all.
+COPY fastretrieval ./fastretrieval
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --frozen --no-dev --extra server --no-editable
 
-# Install SearXNG from GitHub (zip archive + no-build-isolation for speed)
-# Then patch version_frozen.py (zip has no .git for version detection)
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --quiet msgspec setuptools wheel pyyaml \
-    && uv pip install --quiet --no-build-isolation \
-    https://github.com/searxng/searxng/archive/refs/heads/master.zip \
-    && uv run python -c "\
-import importlib.util; from pathlib import Path; \
-spec = importlib.util.find_spec('searx'); \
-vf = Path(spec.submodule_search_locations[0]) / 'version_frozen.py'; \
-vf.write_text('VERSION_STRING = \"0.0.0\"\nVERSION_TAG = \"v0.0.0\"\nDOCKER_TAG = \"\"\nGIT_URL = \"https://github.com/searxng/searxng\"\nGIT_BRANCH = \"master\"\n'); \
-print(f'Created {vf}')"
+# =============================================================================
+# Stage 2: runtime
+# =============================================================================
+FROM python:3.13-slim-bookworm AS runtime
 
-# Install Playwright chromium browser
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
-RUN uv run python -m playwright install chromium
-
-# ========================
-# Stage 2: Runtime base (shared by stdio + http targets)
-# ========================
-# Multi-target Dockerfile per the shared stdio/HTTP packaging design note,
-# section D6.
-# Build stdio: `docker buildx build --target stdio -t <repo>:stdio .`
-# Build http:  `docker buildx build --target http  -t <repo>:http .`
-# Build latest (= http): `docker buildx build --target http -t <repo>:latest .`
-FROM python:3.13-slim-bookworm@sha256:bb73517d48bd32016e15eade0c009b2724ec3a025a9975b5cd9b251d0dcadb33 AS runtime
-
-LABEL org.opencontainers.image.source="https://github.com/n24q02m/fastretrieval"
-LABEL io.modelcontextprotocol.server.name="io.github.n24q02m/fastretrieval"
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH" \
+    FASTRETRIEVAL_CACHE_PATH=/data/models
 
 WORKDIR /app
 
-# Install Playwright runtime dependencies (system libs for chromium)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Playwright chromium dependencies
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libdbus-1-3 \
-    libxkbcommon0 \
-    libatspi2.0-0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libpango-1.0-0 \
-    libcairo2 \
-    libasound2 \
-    libwayland-client0 \
-    # D-Bus daemon (required by Chromium headless)
-    dbus \
-    # Additional Chromium dependencies
-    libxshmfence1 \
-    libx11-xcb1 \
-    # SearXNG dependencies
-    libxml2 \
-    libxslt1.1 \
-    # General
-    fonts-liberation \
-    && rm -rf /var/lib/apt/lists/*
+# Non-root runtime user; /data owns the model cache volume.
+RUN groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --home-dir /home/app --create-home app \
+    && mkdir -p /data/models \
+    && chown -R app:app /data /home/app
 
-# Copy virtual environment and Playwright browsers from builder
-COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/src /app/src
-COPY --from=builder /opt/playwright /opt/playwright
-
-# Set environment variables
-ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONPATH=/app/src \
-    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
-    CACHE_DIR=/data \
-    DOWNLOAD_DIR=/data/downloads \
-    DBUS_SESSION_BUS_ADDRESS=disabled:
-
-# Create non-root user and set permissions
-RUN groupadd -r appuser && useradd -r -g appuser -d /home/appuser -m appuser \
-    && mkdir -p /data/downloads /home/appuser/.fastretrieval \
-    && touch /home/appuser/.fastretrieval/.setup-complete \
-    && chown -R appuser:appuser /app /data /home/appuser /opt/playwright
+COPY --from=builder --chown=app:app /app/.venv /app/.venv
 
 VOLUME /data
-USER appuser
+USER app
+EXPOSE 9800
 
-# ========================
-# Stage 3a: stdio target (default for plugin marketplace & uvx-style usage)
-# ========================
-FROM runtime AS stdio
-ENV MCP_TRANSPORT=stdio
-ENTRYPOINT ["python", "-m", "fastretrieval"]
+# The server binds 127.0.0.1 by default; CMD widens it for the container. Keep
+# this port in step with CMD -- it is the probe target.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD ["python", "-c", "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:9800/health', timeout=5).status == 200 else 1)"]
 
-# ========================
-# Stage 3b: http target (multi-user remote daemon)
-# ========================
-FROM runtime AS http
-ENV MCP_TRANSPORT=http \
-    MCP_PORT=8080
-EXPOSE 8080
-ENTRYPOINT ["python", "-m", "fastretrieval"]
+ENTRYPOINT ["python", "-m", "fastretrieval.server"]
+CMD ["--host", "0.0.0.0", "--port", "9800"]
