@@ -36,7 +36,17 @@ dependencies = [
 [project.optional-dependencies]
 gguf = ["llama-cpp-python>=0.3.36"]
 image = ["pillow>=13.0.0,<14.0"]
-all = ["fastretrieval[gguf,image]"]
+# fastretrieval.server: the shared /embed + /rerank HTTP surface. The model
+# runtime itself is a base dependency, so only the ASGI stack is optional.
+server = [
+    "fastapi>=0.141.1",
+    "uvicorn>=0.53.0",
+    "pydantic>=2.12.5,<3",
+]
+all = ["fastretrieval[gguf,image,server]"]
+
+[project.scripts]
+fastretrieval-server = "fastretrieval.server.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/n24q02m/fastretrieval"
@@ -51,6 +61,8 @@ dev = [
     "syrupy>=6.1.1",
     "ruff>=0.17.3",
     "ty>=0.0.92",
+    # fastapi.testclient.TestClient drives the server tests over ASGI.
+    "httpx>=0.28.1",
 ]
 
 [build-system]

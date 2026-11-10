@@ -92,7 +92,10 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - run: uv sync --locked --group dev
+      # --extra server: the HTTP surface's tests live in tests/test_server_*.py. Without the
+      # extra they importorskip, so the jobs below would report green while the surface
+      # this repo now ships went untested.
+      - run: uv sync --locked --group dev --extra server
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run ty check --exit-zero-on-warning

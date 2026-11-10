@@ -1,0 +1,17 @@
+# Build context excludes: the image copies pyproject.toml, uv.lock, README.md
+# and fastretrieval/ only, so anything else is upload the builder never reads.
+.git
+.github
+.venv
+.vscode
+**/__pycache__
+**/*.pyc
+.dockerignore
+Dockerfile
+docs
+examples
+manifests
+scripts
+tests
+.coverage
+coverage.xml

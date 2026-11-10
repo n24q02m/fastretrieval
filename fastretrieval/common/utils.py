@@ -15,6 +15,11 @@ from fastretrieval.common.types import NumpyArray
 T = TypeVar("T")
 
 
+#: Environment variable holding the model cache directory. The server CLI and
+#: the library resolve the same name, so a container or unit file sets it once.
+CACHE_PATH_ENV = "FASTRETRIEVAL_CACHE_PATH"
+
+
 def _get_compat_env(new_name: str, old_name: str) -> str | None:
     """Read a renamed environment variable while preserving the old name."""
     new_value = os.environ.get(new_name)
@@ -172,7 +177,7 @@ def define_cache_dir(cache_dir: str | None = None) -> Path:
     Define the cache directory for fastretrieval
     """
     if cache_dir is None:
-        env_cache_path = _get_compat_env("FASTRETRIEVAL_CACHE_PATH", "QWEN3_EMBED_CACHE_PATH")
+        env_cache_path = _get_compat_env(CACHE_PATH_ENV, "QWEN3_EMBED_CACHE_PATH")
         if env_cache_path:
             cache_path = Path(env_cache_path)
         else:
