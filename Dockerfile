@@ -6,10 +6,9 @@
 # ========================
 # Stage 1: Builder
 # ========================
-# Use python:3.13-slim (Debian bookworm) which tracks the latest 3.13 patch
-# (currently 3.13.13). The astral-sh/uv Docker image still pins an older
-# build with uv 0.9.30 + Python 3.13.11, which does not satisfy
-# requires-python = ">=3.13.13" from web-core 1.3.5.
+# Use python:3.13-slim (Debian bookworm) which tracks the latest 3.13 patch.
+# The astral-sh/uv Docker image bundles its own, older interpreter build, so it
+# is used only as a source for the uv binary.
 # Copy the uv binary from the standalone uv image (always latest).
 FROM python:3.13-slim-bookworm@sha256:bb73517d48bd32016e15eade0c009b2724ec3a025a9975b5cd9b251d0dcadb33 AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest@sha256:f513a91fc62fe7c17567eee97230dd198e43edb8a9fbecca843714a4358fe1bc /uv /uvx /usr/local/bin/
@@ -59,9 +58,9 @@ RUN uv run python -m playwright install chromium
 # ========================
 # Stage 2: Runtime base (shared by stdio + http targets)
 # ========================
-# Multi-target Dockerfile per spec
-# `~/projects/.superpower/mcp-core/specs/2026-04-30-multi-mode-stdio-http-architecture.md`
-# section D6. Build stdio: `docker buildx build --target stdio -t <repo>:stdio .`
+# Multi-target Dockerfile per the shared stdio/HTTP packaging design note,
+# section D6.
+# Build stdio: `docker buildx build --target stdio -t <repo>:stdio .`
 # Build http:  `docker buildx build --target http  -t <repo>:http .`
 # Build latest (= http): `docker buildx build --target http -t <repo>:latest .`
 FROM python:3.13-slim-bookworm@sha256:bb73517d48bd32016e15eade0c009b2724ec3a025a9975b5cd9b251d0dcadb33 AS runtime
