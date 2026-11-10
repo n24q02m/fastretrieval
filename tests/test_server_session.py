@@ -7,7 +7,7 @@ conversion, dims validation and score ordering run against the real Session code
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 
 import numpy as np
 import pytest
@@ -63,7 +63,7 @@ class _MissingRuntime:
 
 
 @pytest.fixture(autouse=True)
-def _reset_fakes() -> None:
+def _reset_fakes() -> Iterator[None]:
     _FakeTextEmbedding.instances.clear()
     _FakeTextCrossEncoder.instances.clear()
     registry.reset_sessions()
