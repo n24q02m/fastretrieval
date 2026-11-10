@@ -13,6 +13,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+pytest.importorskip("fastapi", reason="fastapi belongs to the optional [server] extra")
+
 ROOT = Path(__file__).resolve().parents[1]
 
 # Import names owned by the hull dist (the server used to live there) and the

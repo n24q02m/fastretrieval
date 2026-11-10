@@ -7,7 +7,11 @@ import runpy
 import sys
 from unittest.mock import patch
 
-from fastretrieval.server.__main__ import main
+import pytest
+
+pytest.importorskip("uvicorn", reason="uvicorn belongs to the optional [server] extra")
+
+from fastretrieval.server.__main__ import main  # noqa: E402
 
 MODULE = "fastretrieval.server.api:app"
 

@@ -8,10 +8,13 @@ error mapping all run against the real code paths offline.
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
 
-from fastretrieval.server import registry
-from fastretrieval.server.api import __version__, app
+# TestClient needs the [server] extra; a base install (the integration job's
+# env) skips instead of failing collection.
+TestClient = pytest.importorskip("fastapi.testclient").TestClient
+
+from fastretrieval.server import registry  # noqa: E402
+from fastretrieval.server.api import __version__, app  # noqa: E402
 
 
 class FakeBackend:

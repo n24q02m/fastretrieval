@@ -42,6 +42,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # =============================================================================
 FROM python:3.13-slim-bookworm AS runtime
 
+# Attribution back to the repository that builds this image (GHCR links the
+# package to the repo through this label).
+LABEL org.opencontainers.image.source="https://github.com/n24q02m/fastretrieval" \
+      org.opencontainers.image.description="Fast multi-model retrieval runtime with a shared /embed and /rerank HTTP surface" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH" \

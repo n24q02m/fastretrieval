@@ -73,7 +73,9 @@ def test_sessions_are_scoped_by_kind() -> None:
 
 
 def test_explicit_cache_dir_is_forwarded(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = registry.Session("n24q02m/Qwen3-Embedding-0.6B-ONNX", "embed", cache_dir="/tmp/fastretrieval-models")
+    session = registry.Session(
+        "n24q02m/Qwen3-Embedding-0.6B-ONNX", "embed", cache_dir="/tmp/fastretrieval-models"
+    )
     assert session.cache_dir == "/tmp/fastretrieval-models"
 
 

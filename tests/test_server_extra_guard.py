@@ -9,8 +9,11 @@ from unittest.mock import patch
 
 import pytest
 
-from fastretrieval.server import _extra
-from fastretrieval.server.__main__ import main
+pytest.importorskip("fastapi", reason="fastapi belongs to the optional [server] extra")
+pytest.importorskip("uvicorn", reason="uvicorn belongs to the optional [server] extra")
+
+from fastretrieval.server import _extra  # noqa: E402
+from fastretrieval.server.__main__ import main  # noqa: E402
 
 INSTALL_HINT = 'pip install "fastretrieval[server]"'
 
