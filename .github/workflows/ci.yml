@@ -77,6 +77,20 @@ jobs:
       || (github.event_name == 'pull_request' && github.event.action != 'edited')
     strategy:
       fail-fast: false
+      # Derived, never hand-maintained: `python scripts/ci_versions.py` prints this
+      # exact list, from pyproject.toml's `requires-python` floor up to the newest
+      # minor this package can actually install. tests/test_python_support.py fails
+      # when the two disagree, so evolve the ceiling in that script instead of
+      # adding a row here.
+      #
+      # 3.15 is absent on purpose, and NOT because GitHub-hosted images lack it --
+      # actions/setup-python already publishes 3.15.0 through 3.15.2 builders.
+      # onnxruntime, a hard (non-optional) dependency, ships no cp315 wheel and no
+      # sdist through 1.31.1, so `uv sync` on 3.15 is unsatisfiable:
+      #   uv pip compile --python-version 3.15 pyproject.toml
+      #   error: Because onnxruntime>=1.20.1 has no wheels with a matching Python
+      #   ABI tag (e.g. `cp315`) ... your requirements are unsatisfiable.
+      # Add the row, and raise NEWEST_SUPPORTED_MINOR, once that wheel exists.
       matrix:
         python: ["3.11", "3.12", "3.13", "3.14"]
     runs-on: ubuntu-latest
