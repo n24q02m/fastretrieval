@@ -31,6 +31,11 @@ EMBED_MODELS: dict[str, str] = {
     "qwen3-0.6b": "n24q02m/Qwen3-Embedding-0.6B-ONNX",
     "qwen3-0.6b-q4f16": "n24q02m/Qwen3-Embedding-0.6B-ONNX-Q4F16",
     "qwen3-0.6b-gguf": "n24q02m/Qwen3-Embedding-0.6B-GGUF",
+    "minilm-l6-v2": "n24q02m/fr-all-MiniLM-L6-v2",
+    "minilm-l12-v2": "n24q02m/fr-all-MiniLM-L12-v2",
+    "multi-qa-minilm-l6-cos-v1": "n24q02m/fr-multi-qa-MiniLM-L6-cos-v1",
+    "paraphrase-minilm-l3-v2": "n24q02m/fr-paraphrase-MiniLM-L3-v2",
+    "paraphrase-multilingual-minilm-l12-v2": "n24q02m/fr-paraphrase-multilingual-MiniLM-L12-v2",
 }
 
 RERANK_MODELS: dict[str, str] = {
