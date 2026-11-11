@@ -8,9 +8,16 @@ from fastretrieval.common.utils import normalize
 from fastretrieval.text.onnx_embedding import OnnxTextEmbedding, OnnxTextEmbeddingWorker
 from fastretrieval.text.pooled_embedding import PooledEmbedding
 
-# Base class model list kept empty — mean+normalize pooling models can be added at runtime
-# via TextEmbedding.add_custom_model(pooling=PoolingType.MEAN, normalization=True).
+# Mean+normalize pooling models: the fastretrieval-hosted sentence-transformers
+# artifacts are built in; any other model can be added at runtime via
+# TextEmbedding.add_custom_model(pooling=PoolingType.MEAN, normalization=True).
 supported_pooled_normalized_models: list[DenseModelDescription] = []
+
+# Imported after the list exists so the module-level extension is the only
+# registration path (the fr_* repos ship mean-pooled, L2-normalized ONNX).
+from fastretrieval.text.fr_models import FR_MODELS  # noqa: E402
+
+supported_pooled_normalized_models.extend(FR_MODELS)
 
 
 class PooledNormalizedEmbedding(PooledEmbedding):

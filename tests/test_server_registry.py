@@ -118,3 +118,24 @@ def test_ranked_indices_is_stable_on_ties() -> None:
 
 def test_ranked_indices_top_n() -> None:
     assert registry.ranked_indices([0.2, 0.9, 0.5], 2) == [(1, 0.9), (2, 0.5)]
+
+
+FR_ALIASES = {
+    "minilm-l6-v2": "n24q02m/fr-all-MiniLM-L6-v2",
+    "minilm-l12-v2": "n24q02m/fr-all-MiniLM-L12-v2",
+    "multi-qa-minilm-l6-cos-v1": "n24q02m/fr-multi-qa-MiniLM-L6-cos-v1",
+    "paraphrase-minilm-l3-v2": "n24q02m/fr-paraphrase-MiniLM-L3-v2",
+    "paraphrase-multilingual-minilm-l12-v2": "n24q02m/fr-paraphrase-multilingual-MiniLM-L12-v2",
+}
+
+
+def test_fr_aliases_resolve_to_hosted_repos() -> None:
+    for alias, repo in FR_ALIASES.items():
+        assert registry.resolve_model(alias, "embed") == repo
+
+
+def test_fr_repos_are_registered_models() -> None:
+    from fastretrieval.text.text_embedding import TextEmbedding
+
+    supported = {model["model"] for model in TextEmbedding.list_supported_models()}
+    assert set(FR_ALIASES.values()) <= supported

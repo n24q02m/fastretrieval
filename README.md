@@ -153,6 +153,18 @@ API; custom registration does not change the facade defaults.
 | ONNX | [n24q02m/Qwen3-Embedding-0.6B-ONNX](https://huggingface.co/n24q02m/Qwen3-Embedding-0.6B-ONNX) | [n24q02m/Qwen3-Reranker-0.6B-ONNX](https://huggingface.co/n24q02m/Qwen3-Reranker-0.6B-ONNX) |
 | GGUF | [n24q02m/Qwen3-Embedding-0.6B-GGUF](https://huggingface.co/n24q02m/Qwen3-Embedding-0.6B-GGUF) | [n24q02m/Qwen3-Reranker-0.6B-GGUF](https://huggingface.co/n24q02m/Qwen3-Reranker-0.6B-GGUF) |
 
+The five sentence-transformers builds from `fastretrieval.convert` are hosted as
+`n24q02m/fr-*` (384 dims, mean pooling, L2 normalized, INT8 + Q4F16) and resolve
+through short server aliases:
+
+| Alias | HuggingFace repo |
+|:------|:-----------------|
+| `minilm-l6-v2` | `n24q02m/fr-all-MiniLM-L6-v2` |
+| `minilm-l12-v2` | `n24q02m/fr-all-MiniLM-L12-v2` |
+| `multi-qa-minilm-l6-cos-v1` | `n24q02m/fr-multi-qa-MiniLM-L6-cos-v1` |
+| `paraphrase-minilm-l3-v2` | `n24q02m/fr-paraphrase-MiniLM-L3-v2` |
+| `paraphrase-multilingual-minilm-l12-v2` | `n24q02m/fr-paraphrase-multilingual-MiniLM-L12-v2` |
+
 ## Installation
 
 ```bash
