@@ -60,7 +60,7 @@ dev = [
     "pytest-timeout>=2.4.0",
     "syrupy>=6.1.1",
     "ruff>=0.17.3",
-    "ty>=0.0.92",
+    "ty>=0.0.92,<0.0.96", # 0.0.96 reports 5 new missing-union-attribute errors (Optional narrowing); fix then lift
     # fastapi.testclient.TestClient drives the server tests over ASGI.
     "httpx>=0.28.1",
 ]
