@@ -39,9 +39,9 @@ image = ["pillow>=13.0.0,<14.0"]
 # fastretrieval.server: the shared /embed + /rerank HTTP surface. The model
 # runtime itself is a base dependency, so only the ASGI stack is optional.
 server = [
-    "fastapi>=0.141.1",
-    "uvicorn>=0.53.0",
-    "pydantic>=2.12.5,<3",
+    "fastapi>=0.162.0",
+    "uvicorn>=0.54.0",
+    "pydantic>=2.14.3,<3",
 ]
 all = ["fastretrieval[gguf,image,server]"]
 
@@ -54,13 +54,13 @@ Repository = "https://github.com/n24q02m/fastretrieval"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.1.1",
+    "pytest>=9.2.0",
     "pytest-cov>=7.1.0",
     "pytest-xdist>=3.8.0",
     "pytest-timeout>=2.4.0",
     "syrupy>=6.1.1",
     "ruff>=0.17.3",
-    "ty>=0.0.92,<0.0.96", # 0.0.96 reports 5 new missing-union-attribute errors (Optional narrowing); fix then lift
+    "ty>=0.0.97,<0.0.98", # 0.0.96 reports 5 new missing-union-attribute errors (Optional narrowing); fix then lift
     # fastapi.testclient.TestClient drives the server tests over ASGI.
     "httpx>=0.28.1",
 ]
