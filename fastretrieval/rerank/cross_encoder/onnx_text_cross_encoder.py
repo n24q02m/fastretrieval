@@ -3,7 +3,7 @@ from typing import Any
 
 from loguru import logger
 
-from fastretrieval.common.model_description import BaseModelDescription
+from fastretrieval.common.model_description import BaseModelDescription, ModelSource
 from fastretrieval.common.onnx_model import OnnxOutputContext, OnnxSessionConfig
 from fastretrieval.common.types import Device, OnnxProvider
 from fastretrieval.common.utils import define_cache_dir
@@ -13,10 +13,23 @@ from fastretrieval.rerank.cross_encoder.onnx_text_model import (
 )
 from fastretrieval.rerank.cross_encoder.text_cross_encoder_base import TextCrossEncoderBase
 
-# Base class model list kept empty — Qwen3 reranker is registered
-# in qwen3_cross_encoder.py. Custom models can be added at runtime
-# via CustomTextCrossEncoder.add_model().
-supported_onnx_models: list[BaseModelDescription] = []
+# The generic ONNX cross-encoder list. Entries here are loaded by
+# ``OnnxTextCrossEncoder`` with the model files named in the description, so a
+# hosted cross-encoder can be served without adding another encoder class.
+supported_onnx_models: list[BaseModelDescription] = [
+    BaseModelDescription(
+        model="n24q02m/fr-cross-encoder-ms-marco-MiniLM-L6-v2",
+        description=(
+            "ms-marco MiniLM-L6 cross-encoder (BERT, CLS pooling, single "
+            "relevance logit) exported by ``fastretrieval.convert onnx "
+            "--task cross_encoder --output-dim 1``. INT8 dynamic quantized."
+        ),
+        license="apache-2.0",
+        size_in_GB=0.022,
+        sources=ModelSource(hf="n24q02m/fr-cross-encoder-ms-marco-MiniLM-L6-v2"),
+        model_file="onnx/model_quantized.onnx",
+    ),
+]
 
 
 class OnnxTextCrossEncoder(TextCrossEncoderBase, OnnxCrossEncoderModel):

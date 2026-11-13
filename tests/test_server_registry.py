@@ -24,6 +24,14 @@ def test_resolve_rerank_alias() -> None:
     )
 
 
+def test_resolve_bert_cross_encoder_alias() -> None:
+    """The hosted BERT cross-encoder is reachable by a short alias too."""
+    assert (
+        registry.resolve_model("fr-cross-encoder-ms-marco-minilm-l6-v2", "rerank")
+        == "n24q02m/fr-cross-encoder-ms-marco-MiniLM-L6-v2"
+    )
+
+
 def test_resolve_is_case_insensitive() -> None:
     assert registry.resolve_model("QWEN3-0.6B", "embed") == "n24q02m/Qwen3-Embedding-0.6B-ONNX"
 

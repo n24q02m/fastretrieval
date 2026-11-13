@@ -305,3 +305,29 @@ def test_manifest_writer_cleans_temporary_file_after_serialization_failure(tmp_p
         write_manifest(tmp_path, contract, metadata={"fixture": object()})
 
     assert not list(tmp_path.glob(".fastretrieval-manifest.json.*.tmp"))
+
+
+def test_contract_task_translates_to_the_optimum_exporter_task():
+    """A cross-encoder contract exports as text-classification, not as itself."""
+    from fastretrieval.convert.profiles import exporter_task
+
+    assert exporter_task("cross_encoder") == "text-classification"
+    assert exporter_task("dense") == "feature-extraction"
+    assert exporter_task("generative_reranker") == "causal-lm"
+    # A task optimum already knows is passed through untouched.
+    assert exporter_task("text-classification") == "text-classification"
+
+
+def test_bert_cross_encoder_contract_is_exportable_by_name(tmp_path: Path):
+    source = FIXTURES / "tiny-e5"
+    contract = resolve_profile(source, task="cross_encoder", modality="text").build_contract(
+        pooling="CLS",
+        normalization=False,
+        output_dim=1,
+        artifact_formats=("onnx",),
+    )
+
+    from fastretrieval.convert.profiles import exporter_task
+
+    assert contract.task == "cross_encoder"
+    assert exporter_task(contract.task) == "text-classification"
