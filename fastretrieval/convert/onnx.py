@@ -180,7 +180,7 @@ def convert_onnx(
     if len(set(variants)) != len(variants):
         raise ValueError("variants must not contain duplicates")
 
-    from fastretrieval.convert.profiles import resolve_profile
+    from fastretrieval.convert.profiles import exporter_task, resolve_profile
 
     profile = resolve_profile(source, task=task, modality=modality)
     require_convert_deps("torch", "transformers", "optimum", "onnx", "onnxruntime")
@@ -212,7 +212,7 @@ def convert_onnx(
         else:
             from fastretrieval.export import export_to_onnx
 
-            export_to_onnx(source, str(staging_dir), task=task, opset=21)
+            export_to_onnx(source, str(staging_dir), task=exporter_task(task), opset=21)
             fp32_path = onnx_dir / "model.onnx"
             if not fp32_path.exists():
                 raise FileNotFoundError(f"optimum did not write {fp32_path}")

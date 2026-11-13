@@ -29,6 +29,25 @@ _TASK_ALIASES = {
 }
 _MODALITIES = frozenset({"text", "image", "audio", "video"})
 
+# Contract task -> optimum export task. The contract names the behaviour the
+# artifact will be served with (a cross-encoder returns one relevance logit),
+# while optimum only knows its own exporter names (a BERT cross-encoder is
+# exported as ``text-classification``). Passing the contract task straight to
+# optimum made ``--task cross_encoder`` impossible for BERT, which was the
+# reason the BERT cross-encoder CLI flag never worked.
+_EXPORTER_TASKS: dict[str, str] = {
+    "dense": "feature-extraction",
+    "sparse": "feature-extraction",
+    "late_interaction": "feature-extraction",
+    "cross_encoder": "text-classification",
+    "generative_reranker": "causal-lm",
+}
+
+
+def exporter_task(contract_task: str) -> str:
+    """Translate a contract task into the task name optimum exports it under."""
+    return _EXPORTER_TASKS.get(contract_task, contract_task)
+
 
 @dataclass(frozen=True)
 class _SupportSpec:

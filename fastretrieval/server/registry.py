@@ -39,6 +39,7 @@ EMBED_MODELS: dict[str, str] = {
 }
 
 RERANK_MODELS: dict[str, str] = {
+    "fr-cross-encoder-ms-marco-minilm-l6-v2": "n24q02m/fr-cross-encoder-ms-marco-MiniLM-L6-v2",
     "qwen3-rerank-0.6b": "n24q02m/Qwen3-Reranker-0.6B-ONNX",
     "qwen3-rerank-0.6b-q4f16": "n24q02m/Qwen3-Reranker-0.6B-ONNX-Q4F16",
     "qwen3-rerank-0.6b-yesno": "n24q02m/Qwen3-Reranker-0.6B-ONNX-YesNo",
