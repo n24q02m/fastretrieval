@@ -18,6 +18,11 @@ on:
         options:
           - beta
           - stable
+      legacy_final_note:
+        description: "One-time: also publish the FINAL qwen3-embed stub (legacy/qwen3-embed: rename note + qwen3_embed re-export, depends on fastretrieval) so the old PyPI project freezes at it. Set true only on the release that ships it."
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -182,6 +187,101 @@ jobs:
       - run: uv build
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
+
+  # ============================================================================
+  # One-time legacy final note: publish the LAST qwen3-embed release -- a stub
+  # that only notes the rename to fastretrieval, re-exports the 1.14.0 public API
+  # from fastretrieval under the old `qwen3_embed` import name and depends on
+  # fastretrieval, so the old PyPI project freezes at that stub. It lives in
+  # legacy/qwen3-embed at a version one patch above the last real qwen3-embed
+  # release (1.14.0 -> 1.14.1), so no version is computed here. Gated by the
+  # legacy_final_note dispatch input so it runs exactly once. Trusted publishing
+  # (OIDC) like publish-pypi: the qwen3-embed project on PyPI must trust this
+  # repo, cd.yml and environment `pypi` before the dispatch.
+  # ============================================================================
+  publish-pypi-legacy-final:
+    name: Publish qwen3-embed final rename stub
+    needs: release
+    if: >-
+      inputs.legacy_final_note
+      && needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Build the legacy stub
+        run: uv build --out-dir dist-legacy legacy/qwen3-embed
+
+      # A PyPI version number can never be reused, so prove the artifact is the
+      # intended stub before uploading: legacy name, a version above every
+      # release already on PyPI, inactive classifier, dependency on the renamed
+      # distribution, and the re-exporting `qwen3_embed` module.
+      - name: Verify the built artifact is the legacy stub
+        run: |
+          ls dist-legacy
+          python3 - <<'EOF'
+          import glob
+          import json
+          import pathlib
+          import sys
+          import tomllib
+          import urllib.request
+          import zipfile
+
+          stub_dir = pathlib.Path("legacy/qwen3-embed")
+          project = tomllib.loads((stub_dir / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+          dist_key = project["name"].replace("-", "_")
+          dist_info = f"{dist_key}-{project['version']}.dist-info"
+          wheels = glob.glob(f"dist-legacy/{dist_key}-{project['version']}-*.whl")
+          if len(wheels) != 1:
+              sys.exit(f"expected exactly one wheel, got {wheels}")
+          with zipfile.ZipFile(wheels[0]) as wheel:
+              metadata = wheel.read(f"{dist_info}/METADATA").decode()
+              shim = wheel.read("qwen3_embed/__init__.py").decode()
+
+          expected = [
+              f"Name: {project['name']}",
+              f"Version: {project['version']}",
+              "Classifier: Development Status :: 7 - Inactive",
+              *(f"Requires-Dist: {dep}" for dep in project["dependencies"]),
+          ]
+          missing = [line for line in expected if line not in metadata]
+          if "from fastretrieval import" not in shim:
+              missing.append("qwen3_embed/__init__.py re-export")
+          if missing:
+              sys.exit(f"legacy stub metadata mismatch: {missing}")
+
+          def key(version):
+              return tuple(int(part) for part in version.split("."))
+
+          url = f"https://pypi.org/pypi/{project['name']}/json"
+          with urllib.request.urlopen(url, timeout=30) as response:
+              released = json.load(response)["releases"]
+          if project["version"] in released:
+              sys.exit(f"{project['name']} {project['version']} is already on PyPI")
+          finals = [v for v in released if v.replace(".", "").isdigit()]
+          newest = max(finals, key=key)
+          if key(project["version"]) <= key(newest):
+              sys.exit(f"stub {project['version']} does not sort above {newest}")
+          print(f"OK: {project['name']} {project['version']} (newest on PyPI: {newest})")
+          EOF
+
+      - name: Publish the final qwen3-embed stub to PyPI
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
+        with:
+          packages-dir: dist-legacy/
 
   # ============================================================================
   # Build Docker (multi-arch: amd64 + arm64)
