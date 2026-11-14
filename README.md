@@ -521,8 +521,13 @@ deprecated compatibility aliases:
 | `QWEN3_EMBED_MAX_INPUT_LENGTH` | `FASTRETRIEVAL_MAX_INPUT_LENGTH` |
 
 The old names still work and emit a `DeprecationWarning`; when both names are set, the
-`FASTRETRIEVAL_*` value wins. Existing `qwen3-embed` releases remain on PyPI and continue
-to receive security fixes while consumers migrate.
+`FASTRETRIEVAL_*` value wins.
+
+`qwen3-embed` 1.14.1 is the final release under the old name and receives no further
+releases. It is a stub built from [`legacy/qwen3-embed`](legacy/qwen3-embed): installing it
+installs `fastretrieval`, and `qwen3_embed` re-exports the 1.14.0 public API (`TextEmbedding`,
+`TextCrossEncoder`, `CustomModelSpec`, `CustomRerankerSpec`, `Device`) from `fastretrieval`
+with a `DeprecationWarning`. Imports of `qwen3_embed` submodules are not forwarded.
 
 ## Releases and Deployment
 

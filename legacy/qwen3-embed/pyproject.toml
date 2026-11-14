@@ -1,0 +1,36 @@
+[project]
+name = "qwen3-embed"
+# One patch above the last real qwen3-embed release (1.14.0), so this stub is the
+# newest version a resolver sees for the old name, and the number is fixed here
+# rather than produced by the fastretrieval release that ships it.
+version = "1.14.1"
+description = "Renamed to fastretrieval. Final transitional release that installs fastretrieval."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+authors = [{ name = "n24q02m" }]
+classifiers = [
+    "Development Status :: 7 - Inactive",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = ["fastretrieval>=1.12.1"]
+
+[project.optional-dependencies]
+# `pip install qwen3-embed[gguf]` was the documented way to get the GGUF backend.
+gguf = ["fastretrieval[gguf]>=1.12.1"]
+
+[project.urls]
+Homepage = "https://github.com/n24q02m/fastretrieval"
+Source = "https://github.com/n24q02m/fastretrieval"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# The only module is the old import name, re-exporting fastretrieval's public API
+# so `from qwen3_embed import TextEmbedding` keeps working after the upgrade.
+[tool.hatch.build.targets.wheel]
+packages = ["qwen3_embed"]
