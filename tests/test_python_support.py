@@ -17,6 +17,7 @@ from importlib.metadata import metadata
 from pathlib import Path
 
 import pytest
+from packaging.requirements import Requirement
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT_PATH = REPO_ROOT / "pyproject.toml"
@@ -146,3 +147,33 @@ def test_parse_window_honours_upper_bounds():
     assert ci_versions.parse_window(">=3.11,<3.15") == (11, 15)
     assert ci_versions.parse_window(">=3.11,<=3.13") == (11, 14)
     assert ci_versions.parse_window(">3.10") == (11, None)
+
+
+def _runtime_requirements(name: str) -> list[Requirement]:
+    declared = [Requirement(item) for item in _pyproject()["project"]["dependencies"]]
+    return [item for item in declared if item.name == name]
+
+
+def _applies_on(requirement: Requirement, minor: str) -> bool:
+    if requirement.marker is None:
+        return True
+    return requirement.marker.evaluate(
+        {"python_version": minor, "python_full_version": f"{minor}.0"}
+    )
+
+
+def test_onnxruntime_is_declared_exactly_where_a_wheel_exists():
+    # onnxruntime ships cp311..cp314 wheels and nothing for cp315 (no sdist either),
+    # so declaring it on 3.15 makes the install unsatisfiable. The ONNX backend
+    # turns its absence into an ImportError at model load (test_onnxruntime_optional).
+    (requirement,) = _runtime_requirements("onnxruntime")
+    without_wheel = {"3.15"}
+    for minor in SUPPORTED:
+        assert _applies_on(requirement, minor) is (minor not in without_wheel), minor
+
+
+def test_every_supported_minor_gets_exactly_one_numpy_line():
+    requirements = _runtime_requirements("numpy")
+    for minor in SUPPORTED:
+        applicable = [item for item in requirements if _applies_on(item, minor)]
+        assert len(applicable) == 1, (minor, [str(item) for item in applicable])

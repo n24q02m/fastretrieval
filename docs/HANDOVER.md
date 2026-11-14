@@ -8,7 +8,7 @@ Package identity is `fastretrieval` for both distribution and import. Qwen3 name
 
 ## Current operation
 
-- Python: CPython 3.11–3.14.
+- Python: CPython 3.11–3.15. onnxruntime has no cp315 wheel yet, so on 3.15 it is not declared and the ONNX backend raises `ImportError` at model load.
 - Runtime setup: `uv sync --group dev`.
 - Unit gate: `uv run pytest -m "not integration" --tb=short`.
 - Full tests include model downloads; run only when the change requires them.

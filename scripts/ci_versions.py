@@ -10,7 +10,7 @@ asserts that ``.github/workflows/ci.yml`` still agrees with it.
 Usage::
 
     python scripts/ci_versions.py
-    ["3.11", "3.12", "3.13", "3.14"]
+    ["3.11", "3.12", "3.13", "3.14", "3.15"]
 
 The output is a JSON array, ready for ``strategy.matrix.python`` through
 ``fromJSON``.
@@ -30,30 +30,27 @@ PYPROJECT_PATH = REPO_ROOT / "pyproject.toml"
 # ---------------------------------------------------------------------------
 # Ceiling
 # ---------------------------------------------------------------------------
-# The top of the window is "the newest minor this package can actually
-# install", not "the newest minor CPython ships". A row that cannot resolve is
-# worse than an absent row: it turns every PR red for a reason no PR caused.
+# The top of the window is the newest CPython minor with a final release that this
+# package can install. A row that cannot resolve is worse than an absent row: it
+# turns every PR red for a reason no PR caused.
 #
-# 3.15 is held back, and NOT because a GitHub-hosted image lacks it --
-# actions/setup-python already publishes 3.15.0 through 3.15.2 builders. The
-# blocker is onnxruntime, a hard (non-optional) dependency: through 1.31.1 it
-# ships cp311..cp314 wheels, no abi3 wheel and no sdist, so the install itself
-# is unsatisfiable:
+# 3.15 (3.15.0 final, October 2026) is that minor. It installs although
+# onnxruntime, a hard dependency everywhere else, publishes no cp315 wheel and no
+# sdist (through 1.32.0, nightlies included): pyproject.toml declares onnxruntime
+# with `python_version < '3.15'`, and numpy with a cp315-capable floor there, so
+# `uv sync` resolves on 3.15 and the ONNX backend reports the missing runtime at
+# model load instead of the install failing. The 3.15 row therefore runs the full
+# unit suite, and the import-without-runtime path is asserted on its own.
 #
-#   $ uv pip compile --python-version 3.15 pyproject.toml
-#   error: Because onnxruntime>=1.20.1 has no wheels with a matching Python ABI
-#   tag (e.g. `cp315`) ... we can conclude that your requirements are
-#   unsatisfiable.
-#
-# Raise NEWEST_SUPPORTED_MINOR when onnxruntime publishes a cp315 wheel, in the
-# same change that lets the workflow row appear. The reason is exported (and
-# asserted) so the decision is never just a silent absence.
-NEWEST_SUPPORTED_MINOR = (3, 14)
+# Raise NEWEST_SUPPORTED_MINOR when CPython 3.16 has a final release and its
+# wheels resolve. The reason is exported (and asserted) so the ceiling is never
+# just a silent absence.
+NEWEST_SUPPORTED_MINOR = (3, 15)
 
 CEILING_REASON = (
-    "onnxruntime, a hard dependency, publishes no cp315 wheel and no sdist "
-    "through 1.31.1, so installing on 3.15 is unsatisfiable; GitHub-hosted "
-    "images already carry 3.15, so the blocker is the wheel, not the image."
+    "CPython 3.16 has no final release yet (3.15.0 shipped in October 2026), so "
+    "3.15 is the newest minor a published package can claim; on 3.15 onnxruntime "
+    "1.32.0 still has no cp315 wheel, which pyproject.toml handles with a marker."
 )
 
 # The Q34 contract caps the matrix at five rows. Fail loudly instead of silently
