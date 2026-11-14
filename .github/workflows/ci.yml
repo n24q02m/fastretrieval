@@ -83,16 +83,14 @@ jobs:
       # when the two disagree, so evolve the ceiling in that script instead of
       # adding a row here.
       #
-      # 3.15 is absent on purpose, and NOT because GitHub-hosted images lack it --
-      # actions/setup-python already publishes 3.15.0 through 3.15.2 builders.
-      # onnxruntime, a hard (non-optional) dependency, ships no cp315 wheel and no
-      # sdist through 1.31.1, so `uv sync` on 3.15 is unsatisfiable:
-      #   uv pip compile --python-version 3.15 pyproject.toml
-      #   error: Because onnxruntime>=1.20.1 has no wheels with a matching Python
-      #   ABI tag (e.g. `cp315`) ... your requirements are unsatisfiable.
-      # Add the row, and raise NEWEST_SUPPORTED_MINOR, once that wheel exists.
+      # 3.15 resolves without onnxruntime, which still ships no cp315 wheel: the
+      # dependency carries `python_version < '3.15'` in pyproject.toml, so that row
+      # runs the whole unit suite (unit tests stub the ONNX session; pytest -rs
+      # lists any skip) and tests/test_onnxruntime_optional.py asserts the
+      # ImportError the ONNX backend raises without the runtime. See the ceiling
+      # note in scripts/ci_versions.py.
       matrix:
-        python: ["3.11", "3.12", "3.13", "3.14"]
+        python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     runs-on: ubuntu-latest
     steps:
       - name: Harden Runner
@@ -117,7 +115,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           if [ -d "tests" ] && [ "$(ls -A tests/*.py 2>/dev/null)" ]; then
-            uv run pytest -m "not integration" --tb=short --cov=fastretrieval --cov-report=xml
+            uv run pytest -m "not integration" --tb=short -rs --cov=fastretrieval --cov-report=xml
           else
             echo "No tests found, skipping..."
           fi

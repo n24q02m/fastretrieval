@@ -1,6 +1,6 @@
 # AGENTS.md - fastretrieval
 
-Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract. Python 3.11-3.14, uv.
+Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract. Python 3.11-3.15, uv.
 
 ## Package Identity
 
@@ -48,7 +48,9 @@ mise run fix       # ruff check --fix + ruff format
 - `testpaths = ["tests"]`, `pythonpath = ["."]`
 - Integration marker: `@pytest.mark.integration` (requires model downloads: ONNX ~1.2 GB, Q4F16 ~1 GB, GGUF ~756 MB)
 - Integration test files: `test_integration.py` (ONNX), `test_integration_q4f16.py`, `test_integration_gguf.py`
-- CI runs: `uv run pytest -m "not integration" --tb=short` on CPython 3.11-3.14.
+- CI runs: `uv run pytest -m "not integration" --tb=short` on CPython 3.11-3.15.
+- onnxruntime has no cp315 wheel, so it is declared with `python_version < '3.15'`; on 3.15
+  the package imports and the ONNX backend raises `ImportError` at model load.
 
 ## Code Style
 

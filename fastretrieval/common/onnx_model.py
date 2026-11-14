@@ -1,11 +1,13 @@
+from __future__ import annotations
+
+import sys
 import warnings
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 import numpy as np
-import onnxruntime as ort
 from loguru import logger
 from numpy.typing import NDArray
 from tokenizers import Tokenizer
@@ -13,6 +15,31 @@ from tokenizers import Tokenizer
 from fastretrieval.common.preprocessor_utils import load_tokenizer
 from fastretrieval.common.types import Device, NumpyArray, OnnxProvider
 from fastretrieval.parallel_processor import Worker
+
+if TYPE_CHECKING:
+    import onnxruntime as ort
+else:
+    try:
+        import onnxruntime as ort
+    except ImportError:
+        # pyproject.toml declares onnxruntime only where a wheel exists: it publishes no
+        # cp315 wheel and no sdist, so on CPython 3.15 the package installs without it.
+        # Every module that merely imports this one (the public facades included) must
+        # keep importing; only building an ONNX session needs the runtime.
+        ort = None
+
+
+def _require_onnxruntime() -> None:
+    """Fail at session creation, with the reason, when onnxruntime is absent."""
+    if ort is None:
+        version = ".".join(str(part) for part in sys.version_info[:2])
+        raise ImportError(
+            f"The ONNX backend needs onnxruntime, which is not installed for Python {version}. "
+            "onnxruntime publishes no wheel for Python 3.15 yet, so fastretrieval does not "
+            "declare it there. Use Python 3.11-3.14, or install an onnxruntime build for this "
+            "interpreter yourself."
+        )
+
 
 # Holds type of the embedding result
 T = TypeVar("T")
@@ -40,7 +67,7 @@ class OnnxModel(Generic[T]):
     EXPOSED_SESSION_OPTIONS = ("enable_cpu_mem_arena",)
 
     @classmethod
-    def _get_worker_class(cls) -> type["EmbeddingWorker[T]"]:
+    def _get_worker_class(cls) -> type[EmbeddingWorker[T]]:
         raise NotImplementedError("Subclasses must implement this method")
 
     def _post_process_onnx_output(self, output: OnnxOutputContext, **kwargs: Any) -> Iterable[T]:
@@ -143,6 +170,7 @@ class OnnxModel(Generic[T]):
         model_path: Path,
         config: OnnxSessionConfig | None = None,
     ) -> tuple[ort.InferenceSession, list[str]]:
+        _require_onnxruntime()
         if config is None:
             config = OnnxSessionConfig()
 
@@ -169,7 +197,7 @@ class OnnxModel(Generic[T]):
         return session, input_names
 
     @staticmethod
-    def _detect_static_batch_size(session: "ort.InferenceSession") -> int | None:
+    def _detect_static_batch_size(session: ort.InferenceSession) -> int | None:
         """Return the batch size the graph is pinned to, or None if it is dynamic.
 
         ONNX declares each dimension either as an int (static) or as a symbolic
@@ -221,7 +249,7 @@ class OnnxModel(Generic[T]):
     @classmethod
     def add_extra_session_options(
         cls,
-        session_options: "ort.SessionOptions",
+        session_options: ort.SessionOptions,
         extra_options: dict[str, Any],
     ) -> None:
         """Add extra session options to the existing options object in-place
@@ -266,7 +294,7 @@ class EmbeddingWorker(Worker, Generic[T]):
         self.model = self.init_embedding(model_name, cache_dir, **kwargs)
 
     @classmethod
-    def start(cls, model_name: str, cache_dir: str, **kwargs: Any) -> "EmbeddingWorker[T]":
+    def start(cls, model_name: str, cache_dir: str, **kwargs: Any) -> EmbeddingWorker[T]:
         return cls(model_name=model_name, cache_dir=cache_dir, **kwargs)
 
     def process(self, items: Iterable[tuple[int, Any]]) -> Iterable[tuple[int, Any]]:

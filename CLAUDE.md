@@ -1,7 +1,7 @@
 # CLAUDE.md - fastretrieval
 
 Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract.
-Python 3.11-3.14 (strict support contract), uv, hatchling. KHONG phai src layout -- package tai `fastretrieval/`.
+Python 3.11-3.15 (strict support contract), uv, hatchling. KHONG phai src layout -- package tai `fastretrieval/`.
 Derived from fastembed (Qdrant), voi Qwen3 adapters la built-in reference models; custom model
 contracts mo rong ra ngoai family nay. License: Apache-2.0.
 
@@ -104,7 +104,8 @@ PSR v10 (workflow_dispatch) -> PyPI. Dockerfile cung cap stdio/http targets.
 ## Luu y
 
 - KHONG phai src layout: package truc tiep tai `fastretrieval/`, khong phai `src/fastretrieval/`.
-- `requires-python = ">=3.11"` -- strict support for CPython 3.11-3.14.
+- `requires-python = ">=3.11"` -- strict support for CPython 3.11-3.15; onnxruntime chi khai bao cho
+  `python_version < '3.15'` (chua co wheel cp315), nen tren 3.15 ONNX backend bao `ImportError` khi load model.
 - Optional extras: `fastretrieval[image]` adds image and ColPali support; `fastretrieval[all]`
   includes image and GGUF support; `fastretrieval[gguf]` installs only llama-cpp-python.
 - GPU auto-detect: ONNX (onnxruntime-gpu/directml), GGUF (llama-cpp-python CUDA build).

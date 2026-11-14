@@ -4,6 +4,7 @@ import typing
 from pathlib import Path
 
 import numpy as np
+from numpy.typing import NDArray
 
 from fastretrieval.common.types import Device, NumpyArray, OnnxProvider, PathInput
 
@@ -53,17 +54,9 @@ def test_numpy_array_type() -> None:
         np.int32,
     ]
 
-    # typing.get_args will return np.ndarray[Any, np.dtype[np.float64]]
-    # We can extract the actual type by looking at __args__[1].__args__[0]
-
-    actual_dtypes = []
-    for arg in args:
-        # arg is NDArray[np.float64] which is numpy.ndarray[typing.Any, numpy.dtype[numpy.float64]]
-        # arg.__args__[1] is numpy.dtype[numpy.float64]
-        # arg.__args__[1].__args__[0] is numpy.float64
-        actual_dtypes.append(arg.__args__[1].__args__[0])
-
-    for dtype in expected_dtypes:
-        assert dtype in actual_dtypes
-
-    assert len(actual_dtypes) == len(expected_dtypes)
+    # Compare whole aliases rather than digging into their parameters: numpy 2.4
+    # spells NDArray[T] as ndarray[tuple[Any, ...], dtype[T]] (two parameters), but
+    # numpy 2.5 -- the line installed on CPython 3.15 -- turned NDArray into a type
+    # alias whose only parameter is T. Alias equality holds on both.
+    assert len(args) == len(expected_dtypes)
+    assert set(args) == {NDArray[dtype] for dtype in expected_dtypes}
