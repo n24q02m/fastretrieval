@@ -375,7 +375,7 @@ wheels = [
 
 [[package]]
 name = "fastretrieval"
-version = "1.12.1"
+version = "1.13.0b1"
 source = { editable = "." }
 dependencies = [
     { name = "huggingface-hub" },
