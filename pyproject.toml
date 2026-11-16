@@ -24,7 +24,7 @@ dependencies = [
     # numpy 2.5 dropped cp311 wheels and 2.4.x never shipped cp315 ones, so the
     # floor of each line is the first release with wheels for that interpreter.
     "numpy>=2.4.6,<2.5; python_version < '3.15'",
-    "numpy>=2.5.2; python_version >= '3.15'",
+    "numpy>=2.5.4; python_version >= '3.15'",
     # onnxruntime publishes no cp315 wheel and no sdist (through 1.32.0), so on 3.15
     # it is not resolvable at all. The ONNX backend then raises a clear ImportError
     # at model load (fastretrieval/common/onnx_model.py) instead of the whole install
