@@ -2,6 +2,45 @@
 
 <!-- version list -->
 
+## v1.14.0-beta.1 (2026-11-16)
+
+### Bug Fixes
+
+- Dispatch core-update through the profile repo's cd.yml
+  ([#189](https://github.com/n24q02m/fastretrieval/pull/189),
+  [`3ad7df4`](https://github.com/n24q02m/fastretrieval/commit/3ad7df43e2700e48c3a64b6a17eaf13df13146a2))
+
+- Let renovate merge only after every check is green
+  ([#184](https://github.com/n24q02m/fastretrieval/pull/184),
+  [`008f509`](https://github.com/n24q02m/fastretrieval/commit/008f509c2f4297a704bb3c3db3c35b3864f9c603))
+
+- Run the test suite on dispatch and keep pr edits from cancelling ci
+  ([#188](https://github.com/n24q02m/fastretrieval/pull/188),
+  [`7df7ea9`](https://github.com/n24q02m/fastretrieval/commit/7df7ea9b389ea79f2906944c61d396227a5e6d5a))
+
+- Sync the main ruleset file with its live required status checks
+  ([#187](https://github.com/n24q02m/fastretrieval/pull/187),
+  [`05f3c8a`](https://github.com/n24q02m/fastretrieval/commit/05f3c8a3a3cb9fc0b63f7eebbc9b54bccedd1581))
+
+- Upload coverage to codecov over oidc and fail the job when it is refused
+  ([#190](https://github.com/n24q02m/fastretrieval/pull/190),
+  [`809ebbc`](https://github.com/n24q02m/fastretrieval/commit/809ebbc06ed26cc4eedaa9c138182404ab9793aa))
+
+- **deps**: Lock file maintenance ([#186](https://github.com/n24q02m/fastretrieval/pull/186),
+  [`1a6c0e0`](https://github.com/n24q02m/fastretrieval/commit/1a6c0e0d606a8dbe5d89a4169264cc145cef6108))
+
+- **deps**: Update numpy to >=2.5.4 ([#185](https://github.com/n24q02m/fastretrieval/pull/185),
+  [`58e9381`](https://github.com/n24q02m/fastretrieval/commit/58e9381e2ae581a6897407fdf6c729bc9a3db551))
+
+- **deps**: Update ruff to >=0.17.4 ([#183](https://github.com/n24q02m/fastretrieval/pull/183),
+  [`54b9427`](https://github.com/n24q02m/fastretrieval/commit/54b94276838bf7cd637eaa87071fa772455f0e45))
+
+### Features
+
+- Sync cross-promo section ([#191](https://github.com/n24q02m/fastretrieval/pull/191),
+  [`0a0da00`](https://github.com/n24q02m/fastretrieval/commit/0a0da00895d97a42424a4a0103b4b73dd06fc35d))
+
+
 ## v1.8.2 (2026-09-24)
 
 ### Bug Fixes
