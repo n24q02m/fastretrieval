@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "tier": 1,
+  "description": "Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and a declarative model contract",
+  "homepage": "https://docs.n24q02m.com/reference/fastretrieval/",
+  "topics": [
+    "embedding",
+    "onnx",
+    "reranking",
+    "retrieval"
+  ]
+}

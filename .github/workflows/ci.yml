@@ -8,14 +8,28 @@
 name: CI
 
 on:
+  # Public repo (spec 2026-10-30): ci.yml may also start by itself, because Actions minutes
+  # are free on a public repo. cd.yml stays dispatch-only on every repo. ci_policy_lint.py
+  # allows these triggers in ci.yml of a public repo only.
   pull_request:
     branches: [main]
+    # `edited` re-runs the required PR title check after a title edit; every other job
+    # skips it. See the concurrency key below for why it does not cancel the suite.
     types: [opened, edited, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
-  schedule:
-    - cron: "17 3 * * 1"
-  workflow_dispatch: {}
+  # No schedule: the weekly cron that ran CodeQL and the convert smoke test is gone.
+  # A dispatch runs the whole suite plus convert-smoke (see the `job` input).
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "all = the suite plus convert-smoke (the job the weekly schedule used to run); suite = skip convert-smoke"
+        required: false
+        type: choice
+        options:
+          - all
+          - suite
+        default: all
 
 permissions:
   contents: read
@@ -23,10 +37,10 @@ permissions:
 
 concurrency:
   # Every event gets its own group keyed by EVENT + PR/ref, so a newer
-  # run only ever cancels an older run of the SAME pr/ref/event. Two past
+  # run only ever cancels an older run of the SAME pr/ref/event. Three past
   # defects encoded here:
-  # 1. event_name in the key: runs with no pull_request.number (schedule, workflow_dispatch;
-  #    originally issues events) run on the default ref, so without it their
+  # 1. event_name in the key: runs with no pull_request.number (workflow_dispatch;
+  #    originally issues and schedule events) run on the default ref, so without it their
   #    group collapsed to the push-to-main group and a stray event cancelled
   #    an in-flight main build.
   # 2. NO shared "bot-serial" group: all bot PRs (Renovate, Jules, ...)
@@ -35,8 +49,14 @@ concurrency:
   #    bot PR's in-flight CI — bot PRs chronically showed CANCELLED checks and
   #    could never be merged on a green gate. The single self-hosted runner
   #    already serializes job EXECUTION; per-PR groups just let runs queue.
+  # 3. `edited` in its own group: a PR body or title edit (Renovate rewrites its PR
+  #    body right after every push) started a run in the same group as the push's
+  #    `synchronize` run and cancelled it, while the `edited` run itself skips every
+  #    job except the title check -- the suite ended CANCELLED, never re-run (run
+  #    43633867838, cancelled by 43633869077 on PR #186). An edit now only ever
+  #    cancels an older edit; a new push still cancels the older push run.
   group: >-
-    ${{ format('ci-{0}-{1}-{2}', github.workflow, github.event_name, github.event.pull_request.number || github.ref) }}
+    ${{ format('ci-{0}-{1}-{2}-{3}', github.workflow, github.event_name, github.event.pull_request.number || github.ref, github.event.action == 'edited' && 'edited' || 'code') }}
   cancel-in-progress: true
 
 jobs:
@@ -47,13 +67,12 @@ jobs:
   # ============================================================================
   readme-sync:
     name: Verify README registry metadata
-    # Not on schedule (folded in for CodeQL's weekly scan) -- that trigger
-    # did not exist in this file's original trigger set for this check.
     if: >-
       github.event_name == 'push'
       || github.event_name == 'workflow_dispatch'
       || (github.event_name == 'pull_request' && github.event.action != 'edited')
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -74,7 +93,9 @@ jobs:
     name: Lint & Test (Python ${{ matrix.python }})
     if: >-
       github.event_name == 'push'
+      || github.event_name == 'workflow_dispatch'
       || (github.event_name == 'pull_request' && github.event.action != 'edited')
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       # Derived, never hand-maintained: `python scripts/ci_versions.py` prints this
@@ -139,6 +160,7 @@ jobs:
     name: Dependency Review
     if: github.event_name == 'pull_request' && github.event.action != 'edited'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -157,16 +179,17 @@ jobs:
         continue-on-error: true
 
   # ============================================================================
-  # CodeQL (merged from codeql.yml; weekly schedule folded into on: above)
+  # CodeQL: the repo's only CodeQL configuration (codeql.yml is folded in here).
+  # The weekly schedule is gone; it now runs on push, PR and dispatch.
   # ============================================================================
   analyze:
     name: Analyze (CodeQL)
     if: >-
       github.event_name == 'push'
-      || github.event_name == 'schedule'
       || github.event_name == 'workflow_dispatch'
       || (github.event_name == 'pull_request' && github.event.action != 'edited')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       actions: read
       contents: read
@@ -190,10 +213,14 @@ jobs:
   # ============================================================================
   integration-paths:
     name: Integration paths gate
+    # A dispatch has no base commit (`github.event.before` is empty), so the gate
+    # below fails open and the integration suite runs.
     if: >-
       github.event_name == 'push'
+      || github.event_name == 'workflow_dispatch'
       || (github.event_name == 'pull_request' && github.event.action != 'edited')
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       hit: ${{ steps.gate.outputs.hit }}
     steps:
@@ -231,6 +258,7 @@ jobs:
     if: >-
       needs.integration-paths.outputs.hit == 'true'
       && (github.event_name == 'push'
+          || github.event_name == 'workflow_dispatch'
           || (github.event_name == 'pull_request' && github.event.action != 'edited'))
     runs-on: ubuntu-latest
     # Provisional, sized for a cold cache. Run 31232142381 was killed at 30 minutes
@@ -371,6 +399,7 @@ jobs:
     name: Validate PR title (Conventional Commits subset)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       pull-requests: read
     steps:
@@ -397,13 +426,14 @@ jobs:
             The subject must not start with an uppercase character.
 
   # ============================================================================
-  # Convert smoke test (merged from convert.yml; weekly schedule + dispatch).
+  # Convert smoke test (merged from convert.yml). Dispatch only: it replaced the
+  # weekly schedule, and `job: suite` leaves it out of a dispatched run.
   # Lives in CI, not CD: the release workflow is dispatch-only, and this check
   # publishes nothing -- it only proves the converter still works end to end.
   # ============================================================================
   convert-smoke:
     name: Convert smoke test
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.job != 'suite'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
