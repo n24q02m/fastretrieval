@@ -33,6 +33,7 @@ env:
   DOCKERHUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/fastretrieval
   GHCR_IMAGE: ghcr.io/${{ github.repository }}
 
+# ci-policy: allow concurrency reason: serialize releases, never cancel one mid-publish
 concurrency:
   group: release
   cancel-in-progress: false
@@ -49,6 +50,7 @@ jobs:
     # Release lane only (dispatch).
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -65,6 +67,7 @@ jobs:
     # Release lane only (dispatch); a release is never cut automatically.
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       released: ${{ steps.release.outputs.released }}
       tag: ${{ steps.release.outputs.tag }}
@@ -133,6 +136,7 @@ jobs:
       && needs.release.outputs.is_prerelease != 'true'
       && vars.NOTIFY_DOWNSTREAM == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -170,6 +174,7 @@ jobs:
     needs: [readme-sync, release]
     if: needs.release.outputs.released == 'true' && vars.PUBLISH_PYPI == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: pypi
     permissions:
       contents: read
@@ -209,6 +214,7 @@ jobs:
       inputs.legacy_final_note
       && needs.release.result == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: pypi
     permissions:
       contents: read
@@ -310,6 +316,7 @@ jobs:
             runner: ubuntu-24.04-arm
             artifact: linux-arm64
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -344,7 +351,7 @@ jobs:
         with:
           name: digest-${{ matrix.artifact }}
           path: ${{ runner.temp }}/digests/*
-          retention-days: 1
+          retention-days: 3
 
   # ============================================================================
   # Merge Docker Manifests
@@ -354,6 +361,7 @@ jobs:
     needs: [release, build-docker]
     if: needs.release.outputs.released == 'true' && vars.PUBLISH_DOCKER == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       packages: write
@@ -433,6 +441,7 @@ jobs:
       && vars.PUBLISH_DOCKER == 'true'
       && vars.PUBLISH_MCP_REGISTRY == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       id-token: write
