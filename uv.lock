@@ -422,7 +422,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.162.0" },
+    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.162.2" },
     { name = "fastretrieval", extras = ["gguf", "image", "server"], marker = "extra == 'all'" },
     { name = "huggingface-hub", specifier = ">=1.33.0,<2.0" },
     { name = "llama-cpp-python", marker = "extra == 'gguf'", specifier = ">=0.3.36" },
