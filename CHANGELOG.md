@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v1.14.0-beta.2 (2026-11-16)
+
+### Bug Fixes
+
+- **deps**: Lock file maintenance ([#193](https://github.com/n24q02m/fastretrieval/pull/193),
+  [`76743f0`](https://github.com/n24q02m/fastretrieval/commit/76743f0bb261079a76c6ec718354722832cf47cc))
+
+- **deps**: Update fastapi to >=0.162.2 ([#192](https://github.com/n24q02m/fastretrieval/pull/192),
+  [`54d3ba7`](https://github.com/n24q02m/fastretrieval/commit/54d3ba76fb8e2731db2b4287f4afd1b8b7ff9b58))
+
+
 ## v1.14.0-beta.1 (2026-11-16)
 
 ### Bug Fixes
