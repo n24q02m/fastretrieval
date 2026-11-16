@@ -118,7 +118,7 @@ jobs:
   #
   # NOTIFY_DOWNSTREAM, because that rule binds CORE repos and this template lands
   # on every Python repo. Ungated, a non-core repo in this stack would dispatch
-  # `core-update` on a stable release with client_payload[core] naming itself.
+  # `core-update` on a stable release with its core input naming itself.
   # Two measurements say that is latent rather than visible: the hub repo has
   # exactly one workflow (opencode.yml) and no `repository_dispatch` trigger
   # anywhere, so nothing handles `core-update` today; and the job this was
@@ -155,12 +155,12 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          gh api repos/n24q02m/n24q02m/dispatches \
-            -f event_type=core-update \
-            -f 'client_payload[core]=fastretrieval' \
-            -f 'client_payload[version]=${{ needs.release.outputs.version }}' \
-            -f 'client_payload[tag]=${{ needs.release.outputs.tag }}' \
-            -f 'client_payload[release_url]=https://github.com/${{ github.repository }}/releases/tag/${{ needs.release.outputs.tag }}'
+          gh workflow run cd.yml -R n24q02m/n24q02m \
+            -f job=core-update \
+            -f 'core=fastretrieval' \
+            -f 'version=${{ needs.release.outputs.version }}' \
+            -f 'tag=${{ needs.release.outputs.tag }}' \
+            -f 'release_url=https://github.com/${{ github.repository }}/releases/tag/${{ needs.release.outputs.tag }}'
 
   # ============================================================================
   # Publish to PyPI
