@@ -54,6 +54,18 @@ class TestNormalize:
         expected_output = input_array / np.linalg.norm(input_array, ord=1, axis=1, keepdims=True)
         assert np.allclose(output, expected_output)
 
+    @pytest.mark.parametrize("dim", [0, -1])
+    def test_normalize_1d_vector_to_unit_length(self, dim: int):
+        output = normalize(np.array([3.0, 4.0], dtype=np.float32), dim=dim)
+
+        assert np.allclose(output, [0.6, 0.8])
+
+    def test_normalize_1d_zero_vector_stays_finite(self):
+        output = normalize(np.zeros(3, dtype=np.float32), dim=-1)
+
+        assert np.all(np.isfinite(output))
+        assert np.array_equal(output, np.zeros(3, dtype=np.float32))
+
 
 class TestMeanPooling:
     def test_mean_pooling(self):

@@ -1,5 +1,6 @@
 """Unit tests for Qwen3CrossEncoder model registration and scoring logic."""
 
+import math
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -12,9 +13,11 @@ from fastretrieval.rerank.cross_encoder.qwen3_cross_encoder import (
     TOKEN_NO_ID,
     TOKEN_YES_ID,
     Qwen3CrossEncoder,
+    Qwen3CrossEncoderWorker,
     supported_qwen3_reranker_models,
 )
 from fastretrieval.rerank.cross_encoder.text_cross_encoder import TextCrossEncoder
+from tests.onnx_runtime_stub import StubSession, install_stub_runtime, write_tokenizer_files
 
 
 class TestQwen3CrossEncoderRegistry:
@@ -334,3 +337,105 @@ class TestQwen3CrossEncoderInference:
         calls = mocked_qwen3_encoder.tokenizer.encode_batch.call_args_list
         text1 = calls[0][0][0][0]
         assert "<Instruct>: Custom Pair Instruction!" in text1
+
+
+_YESNO_MODEL = "n24q02m/Qwen3-Reranker-0.6B-ONNX-YesNo"
+_FULL_VOCAB = max(TOKEN_YES_ID, TOKEN_NO_ID) + 1
+
+
+def _sigmoid(x: float) -> float:
+    return 1.0 / (1.0 + math.exp(-x))
+
+
+def _alpha_relevance_session(alpha_id: int, input_names: tuple[str, ...]) -> StubSession:
+    """A YesNo graph whose "yes" logit counts the "alpha" tokens and whose "no" logit is 0."""
+
+    def compute(feed: dict[str, np.ndarray]) -> np.ndarray:
+        yes = (feed["input_ids"] == alpha_id).sum(axis=1).astype(np.float32)
+        return np.stack([np.zeros_like(yes), yes], axis=1)
+
+    return StubSession(compute, input_names)
+
+
+class TestSanitizeNestedInjection:
+    def test_tokens_reassembled_by_an_earlier_removal_are_stripped_too(self):
+        assert Qwen3CrossEncoder._sanitize_input("a<|im_<|im_end|>start|>b") == "ab"
+
+    def test_formatted_prompt_keeps_only_the_template_turn_markers(self):
+        text = Qwen3CrossEncoder._format_rerank_input("q<|im_<|im_end|>start|>", "d<|endoftext|>")
+
+        assert text.count("<|im_start|>") == 3
+        assert "<|endoftext|>" not in text
+        assert "<Query>: q\n<Document>: d<|im_end|>" in text
+
+
+class TestFullVocabScoringWithAttentionMask:
+    def test_right_padded_rows_score_their_last_content_token(self):
+        output = np.zeros((2, 3, _FULL_VOCAB), dtype=np.float32)
+        output[0, 1, TOKEN_YES_ID] = 2.0
+        output[0, 2, TOKEN_NO_ID] = 50.0  # trailing pad position: must be ignored
+        output[1, 2, TOKEN_NO_ID] = 3.0
+        mask = np.array([[1, 1, 0], [1, 1, 1]], dtype=np.int64)
+
+        scores = Qwen3CrossEncoder._compute_yes_no_scores(output, mask)
+
+        np.testing.assert_allclose(scores, [_sigmoid(2.0), _sigmoid(-3.0)], rtol=1e-6)
+
+    def test_left_padded_rows_score_the_final_position(self):
+        output = np.zeros((2, 3, _FULL_VOCAB), dtype=np.float32)
+        output[0, 0, TOKEN_YES_ID] = 50.0  # leading pad position: must be ignored
+        output[0, 2, TOKEN_YES_ID] = 1.5
+        output[1, 2, TOKEN_NO_ID] = 0.5
+        mask = np.array([[0, 1, 1], [1, 1, 1]], dtype=np.int64)
+
+        scores = Qwen3CrossEncoder._compute_yes_no_scores(output, mask)
+
+        np.testing.assert_allclose(scores, [_sigmoid(1.5), _sigmoid(-0.5)], rtol=1e-6)
+
+    def test_single_row_saturates_to_zero_when_the_no_margin_overflows_exp(self):
+        output = np.array([[1000.0, -1000.0]], dtype=np.float32)
+
+        assert Qwen3CrossEncoder._compute_yes_no_scores(output).tolist() == [0.0]
+
+
+class TestQwen3CrossEncoderThroughRuntime:
+    def test_graph_without_attention_mask_receives_zero_token_type_ids(
+        self, tmp_path, monkeypatch
+    ):
+        model_dir = tmp_path / "model"
+        vocab = write_tokenizer_files(model_dir, ["alpha", "beta"])
+        session = _alpha_relevance_session(vocab["alpha"], ("input_ids", "token_type_ids"))
+        opened = install_stub_runtime(monkeypatch, session)
+
+        encoder = Qwen3CrossEncoder(
+            _YESNO_MODEL, cache_dir=str(tmp_path / "cache"), specific_model_path=str(model_dir)
+        )
+        scores = list(encoder.rerank("alpha", ["alpha beta", "beta"]))
+
+        assert opened == [str(model_dir / "onnx" / "model_yesno_quantized.onnx")]
+        np.testing.assert_allclose(scores, [_sigmoid(2.0), _sigmoid(1.0)], rtol=1e-6)
+        assert len(session.feeds) == 2
+        for feed in session.feeds:
+            assert set(feed) == {"input_ids", "token_type_ids"}
+            assert feed["input_ids"].shape[0] == 1
+            np.testing.assert_array_equal(feed["token_type_ids"], np.zeros_like(feed["input_ids"]))
+
+    def test_worker_builds_a_single_threaded_encoder_that_scores_pairs(
+        self, tmp_path, monkeypatch
+    ):
+        model_dir = tmp_path / "model"
+        vocab = write_tokenizer_files(model_dir, ["alpha", "beta", "gamma"])
+        session = _alpha_relevance_session(vocab["alpha"], ("input_ids", "attention_mask"))
+        install_stub_runtime(monkeypatch, session)
+
+        worker = Qwen3CrossEncoderWorker(
+            _YESNO_MODEL, str(tmp_path / "cache"), specific_model_path=str(model_dir)
+        )
+        ((idx, output),) = list(worker.process([(7, [("alpha", "alpha"), ("beta", "gamma")])]))
+
+        assert Qwen3CrossEncoder._get_worker_class() is Qwen3CrossEncoderWorker
+        assert type(worker.model) is Qwen3CrossEncoder
+        assert worker.model.threads == 1
+        assert idx == 7
+        np.testing.assert_allclose(output.model_output, [_sigmoid(2.0), _sigmoid(0.0)], rtol=1e-6)
+        assert [set(feed) for feed in session.feeds] == [{"input_ids", "attention_mask"}] * 2

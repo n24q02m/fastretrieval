@@ -70,6 +70,50 @@ def test_export_requires_an_onnx_artifact(tmp_path):
         export_to_onnx("mock/model", str(tmp_path / "exported"))
 
 
+def test_export_moves_root_external_data_next_to_the_nested_model(tmp_path):
+    def fake_main_export(model_id, *, output, task, opset):
+        Path(output).joinpath("model.onnx").write_bytes(b"graph")
+        Path(output).joinpath("model.onnx.data").write_bytes(b"weights")
+
+    # optimum is an optional heavy dependency that is not installed in the test env.
+    with patch.dict(
+        "sys.modules",
+        {
+            "optimum": MagicMock(),
+            "optimum.exporters": MagicMock(),
+            "optimum.exporters.onnx": MagicMock(main_export=fake_main_export),
+        },
+    ):
+        export_to_onnx("mock/large-model", str(tmp_path))
+
+    assert (tmp_path / "onnx" / "model.onnx").read_bytes() == b"graph"
+    assert (tmp_path / "onnx" / "model.onnx.data").read_bytes() == b"weights"
+    assert not (tmp_path / "model.onnx").exists()
+    assert not (tmp_path / "model.onnx.data").exists()
+
+
+def test_export_keeps_an_already_nested_model_in_place(tmp_path):
+    def fake_main_export(model_id, *, output, task, opset):
+        nested = Path(output) / "onnx"
+        nested.mkdir()
+        nested.joinpath("model.onnx").write_bytes(b"nested")
+        Path(output).joinpath("model.onnx").write_bytes(b"root")
+
+    # optimum is an optional heavy dependency that is not installed in the test env.
+    with patch.dict(
+        "sys.modules",
+        {
+            "optimum": MagicMock(),
+            "optimum.exporters": MagicMock(),
+            "optimum.exporters.onnx": MagicMock(main_export=fake_main_export),
+        },
+    ):
+        export_to_onnx("mock/model", str(tmp_path))
+
+    assert (tmp_path / "onnx" / "model.onnx").read_bytes() == b"nested"
+    assert (tmp_path / "model.onnx").read_bytes() == b"root"
+
+
 @pytest.mark.integration
 @pytest.mark.skipif(not _HAS_OPTIMUM_ONNX, reason="requires optimum-onnx")
 def test_export_minilm_roundtrip(tmp_path):
