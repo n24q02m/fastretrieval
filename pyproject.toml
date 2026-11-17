@@ -112,6 +112,10 @@ invalid-assignment = "warn"
 call-non-callable = "warn"
 
 [tool.ruff]
+# Files repo-bootstrap copies in are replaced on every apply and follow the
+# toolkit's own style. Linting or formatting them here (CI or the pre-commit
+# hooks, which pass --force-exclude) would leave a copy apply reports as drifted.
+extend-exclude = ["scripts/repo-bootstrap", "scripts/main_integrity.py", "scripts/merge_gate.py"]
 line-length = 99
 target-version = "py311"
 
