@@ -84,7 +84,10 @@ packages = ["fastretrieval"]
 version_toml = ["pyproject.toml:project.version"]
 tag_format = "v{version}"
 commit_message = "chore(release): v{version}"
+# PSR runs this as one `sh -c`; `set -e` makes a failed lock or build stop the
+# release instead of only the last line counting.
 build_command = """
+set -e
 uv lock --upgrade-package "$PACKAGE_NAME"
 git add uv.lock
 uv build
