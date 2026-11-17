@@ -331,3 +331,46 @@ def test_bert_cross_encoder_contract_is_exportable_by_name(tmp_path: Path):
 
     assert contract.task == "cross_encoder"
     assert exporter_task(contract.task) == "text-classification"
+
+
+def _tiny_e5_contract():
+    return resolve_profile(FIXTURES / "tiny-e5", task="dense", modality="text").build_contract(
+        pooling="mean",
+        normalization=True,
+        output_dim=384,
+        artifact_formats=("onnx",),
+        quantization="int8",
+    )
+
+
+def test_metadata_repeating_a_manifest_field_with_the_same_value_is_accepted(tmp_path: Path):
+    contract = _tiny_e5_contract()
+
+    manifest = write_manifest(
+        tmp_path, contract, metadata={"quantization": "int8", "variants": ["int8"]}
+    )
+
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    assert payload["quantization"] == "int8"
+    assert payload["variants"] == ["int8"]
+    assert load_manifest(tmp_path) == contract
+
+
+def test_metadata_conflicting_with_a_manifest_field_is_rejected_before_writing(tmp_path: Path):
+    contract = _tiny_e5_contract()
+
+    with pytest.raises(
+        ValueError, match="metadata key conflicts with manifest field: quantization"
+    ):
+        write_manifest(tmp_path, contract, metadata={"quantization": "q4f16"})
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_load_manifest_accepts_an_explicit_json_path(tmp_path: Path):
+    contract = _tiny_e5_contract()
+    manifest = write_manifest(tmp_path, contract)
+    renamed = tmp_path / "copied-manifest.json"
+    renamed.write_bytes(manifest.read_bytes())
+
+    assert load_manifest(renamed) == contract

@@ -150,6 +150,71 @@ def test_load_tokenizer_max_length_precedence(create_test_files):
     assert tokenizer.truncation["max_length"] == 150
 
 
+def test_load_tokenizer_max_length_alone_sets_truncation(create_test_files):
+    model_dir = create_test_files(tokenizer_config={"max_length": 64, "pad_token": "<pad>"})
+
+    tokenizer, _ = load_tokenizer(model_dir)
+
+    assert tokenizer.truncation is not None
+    assert tokenizer.truncation["max_length"] == 64
+
+
+def test_load_tokenizer_missing_pad_token_id_defaults_to_zero(create_test_files):
+    model_dir = create_test_files(
+        config={"pad_token_id": None},
+        tokenizer_config={"model_max_length": 32, "pad_token": "<unk>"},
+    )
+
+    tokenizer, _ = load_tokenizer(model_dir)
+
+    assert tokenizer.padding is not None
+    assert tokenizer.padding["pad_id"] == 0
+    assert tokenizer.padding["pad_token"] == "<unk>"
+
+
+def test_load_tokenizer_reads_pad_token_from_added_token_dict(create_test_files):
+    model_dir = create_test_files(
+        tokenizer_config={
+            "model_max_length": 32,
+            "pad_token": {"content": "[SEP]", "lstrip": False, "rstrip": False},
+        }
+    )
+
+    tokenizer, _ = load_tokenizer(model_dir)
+
+    assert tokenizer.padding is not None
+    assert tokenizer.padding["pad_token"] == "[SEP]"
+
+
+def test_load_tokenizer_keeps_padding_saved_in_tokenizer_json(create_test_files):
+    model_dir = create_test_files(config={"pad_token_id": 0})
+    padded = Tokenizer(models.BPE())
+    padded.add_special_tokens(["<pad>", "<unk>", "[CLS]", "[SEP]"])
+    padded.enable_padding(direction="left", pad_id=3, pad_token="[SEP]")
+    padded.save(str(model_dir / "tokenizer.json"))
+
+    tokenizer, _ = load_tokenizer(model_dir)
+
+    assert tokenizer.padding is not None
+    assert tokenizer.padding["pad_id"] == 3
+    assert tokenizer.padding["pad_token"] == "[SEP]"
+    assert tokenizer.padding["direction"] == "left"
+
+
+def test_load_tokenizer_ignores_list_valued_special_token_entries(create_test_files):
+    model_dir = create_test_files(
+        special_tokens_map={
+            "cls_token": "[CLS]",
+            "additional_special_tokens": ["<extra_a>", "<extra_b>"],
+        }
+    )
+
+    tokenizer, special_tokens = load_tokenizer(model_dir)
+
+    assert special_tokens == {"[CLS]": tokenizer.token_to_id("[CLS]")}
+    assert tokenizer.token_to_id("<extra_a>") is None
+
+
 class TestLoadSpecialTokens:
     """Tests for load_special_tokens utility."""
 

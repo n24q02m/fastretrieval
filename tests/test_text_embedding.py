@@ -3,7 +3,9 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from fastretrieval.text.qwen3_embedding import Qwen3TextEmbedding
 from fastretrieval.text.text_embedding import TextEmbedding
+from tests.onnx_runtime_stub import StubSession, install_stub_runtime, write_tokenizer_files
 
 
 def test_init_unsupported_model_raises_value_error():
@@ -129,3 +131,72 @@ def test_embedding_size_property(mocked_text_embedding):
         TextEmbedding.get_embedding_size.reset_mock()  # type: ignore[attr-defined]
         assert te.embedding_size == 123
         TextEmbedding.get_embedding_size.assert_not_called()  # type: ignore[attr-defined]
+
+
+_QWEN3_EMBED_MODEL = "n24q02m/Qwen3-Embedding-0.6B-ONNX"
+
+
+def _hidden_state_from_token_ids(feed: dict[str, np.ndarray]) -> np.ndarray:
+    """Every token's hidden state is ``[token_id, 1, 2, 2]``, so pooling is easy to predict."""
+    ids = feed["input_ids"].astype(np.float32)
+    ones = np.ones_like(ids)
+    return np.stack([ids, ones, 2 * ones, 2 * ones], axis=-1)
+
+
+def _unit(vector: list[float]) -> np.ndarray:
+    array = np.asarray(vector, dtype=np.float32)
+    return array / np.linalg.norm(array)
+
+
+@pytest.fixture
+def stub_text_embedding(tmp_path, monkeypatch):
+    """A real TextEmbedding facade over the Qwen3 backend, loaded through a stub runtime."""
+    model_dir = tmp_path / "model"
+    vocab = write_tokenizer_files(model_dir, ["alpha", "beta"])
+    session = StubSession(_hidden_state_from_token_ids)
+    # onnxruntime boundary: no CPython 3.15 wheel exists, so the session is a numpy stand-in.
+    opened = install_stub_runtime(monkeypatch, session)
+    embedding = TextEmbedding(
+        _QWEN3_EMBED_MODEL, cache_dir=str(tmp_path / "cache"), specific_model_path=str(model_dir)
+    )
+    return embedding, session, vocab, model_dir, opened
+
+
+def test_init_builds_the_registered_qwen3_backend_and_loads_its_graph(stub_text_embedding):
+    embedding, _, _, model_dir, opened = stub_text_embedding
+
+    assert type(embedding.model) is Qwen3TextEmbedding
+    assert embedding.model.model_description.model == _QWEN3_EMBED_MODEL
+    assert opened == [str(model_dir / "onnx" / "model_quantized.onnx")]
+
+
+def test_query_embed_embeds_a_single_query_string(stub_text_embedding):
+    embedding, session, vocab, _, _ = stub_text_embedding
+
+    (vector,) = list(embedding.query_embed("alpha"))
+
+    assert len(session.feeds) == 1
+    assert session.feeds[0]["input_ids"][0, -1] == vocab["alpha"]
+    np.testing.assert_allclose(vector, _unit([vocab["alpha"], 1, 2, 2]), rtol=1e-6)
+
+
+def test_query_embed_embeds_queries_streamed_from_a_generator(stub_text_embedding):
+    embedding, _, vocab, _, _ = stub_text_embedding
+
+    vectors = list(embedding.query_embed(q for q in ["alpha", "beta"]))
+
+    np.testing.assert_allclose(vectors[0], _unit([vocab["alpha"], 1, 2, 2]), rtol=1e-6)
+    np.testing.assert_allclose(vectors[1], _unit([vocab["beta"], 1, 2, 2]), rtol=1e-6)
+
+
+def test_passage_embed_embeds_passages_streamed_from_a_generator(stub_text_embedding):
+    embedding, session, vocab, _, _ = stub_text_embedding
+
+    vectors = list(embedding.passage_embed(t for t in ["beta alpha", "alpha beta"]))
+
+    assert [feed["input_ids"].tolist() for feed in session.feeds] == [
+        [[vocab["beta"], vocab["alpha"]]],
+        [[vocab["alpha"], vocab["beta"]]],
+    ]
+    np.testing.assert_allclose(vectors[0], _unit([vocab["alpha"], 1, 2, 2]), rtol=1e-6)
+    np.testing.assert_allclose(vectors[1], _unit([vocab["beta"], 1, 2, 2]), rtol=1e-6)

@@ -71,6 +71,12 @@ dev = [
     "ty>=0.0.99,<0.0.100", # 0.0.96 reports 5 new missing-union-attribute errors (Optional narrowing); fix then lift
     # fastapi.testclient.TestClient drives the server tests over ASGI.
     "httpx>=0.28.1",
+    # The ONNX graph passes in fastretrieval.convert (cast fix-up, int8 and q4f16
+    # quantization) run for real on tiny in-memory graphs in the unit suite; the
+    # rest of convert/requirements.txt (torch, transformers, optimum) stays out.
+    "onnx>=1.23.2",
+    "onnxconverter-common>=1.16.0",
+    "onnx-ir>=1.1.0",
 ]
 
 [build-system]
@@ -132,3 +138,12 @@ pythonpath = ["."]
 markers = [
     "integration: tests requiring real ONNX model download (~1.2 GB)",
 ]
+
+[tool.coverage.run]
+source = ["fastretrieval"]
+branch = true
+
+[tool.coverage.report]
+# Enforced on every CI row (three OSes x the Python matrix): a run below this fails.
+fail_under = 95
+show_missing = true

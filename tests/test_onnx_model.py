@@ -1,6 +1,7 @@
 import os
 from collections.abc import Iterable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -445,3 +446,37 @@ def test_worker_abstract_methods_raise():
         worker = AbstractWorker(model_name="test", cache_dir="/tmp")
         with pytest.raises(NotImplementedError):
             list(worker.process([]))
+
+
+@pytest.mark.parametrize("cuda", [Device.AUTO, Device.CUDA, True])
+def test_cuda_provider_carries_the_configured_device_id(model: ConcreteOnnxModel, cuda: Any):
+    providers = model._determine_providers(
+        OnnxSessionConfig(cuda=cuda, device_id=2),
+        ["CUDAExecutionProvider", "CPUExecutionProvider"],
+    )
+
+    assert providers == [("CUDAExecutionProvider", {"device_id": 2})]
+
+
+def test_session_without_config_uses_default_cpu_settings(model: ConcreteOnnxModel, mock_ort):
+    session, input_names = model._instantiate_onnx_session(Path("dummy") / "model.onnx")
+
+    assert session is mock_ort.InferenceSession.return_value
+    assert input_names == []
+    mock_ort.InferenceSession.assert_called_once_with(
+        EXPECTED_MODEL_PATH,
+        providers=["CPUExecutionProvider"],
+        sess_options=mock_ort.SessionOptions.return_value,
+    )
+    options = mock_ort.SessionOptions.return_value
+    assert options.enable_mem_pattern is False
+    assert options.graph_optimization_level == 99
+
+
+def test_empty_extra_session_options_leave_the_options_untouched():
+    # A plain namespace stands in for ort.SessionOptions: onnxruntime has no cp315 wheel.
+    session_options = SimpleNamespace()
+
+    ConcreteOnnxModel.add_extra_session_options(session_options, {})
+
+    assert vars(session_options) == {}

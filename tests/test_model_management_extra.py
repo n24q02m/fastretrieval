@@ -1,11 +1,20 @@
+import base64
+import hashlib
 import io
 import tarfile
+import threading
+import time
+from collections import deque
+from typing import Protocol, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+from huggingface_hub.hf_api import RepoFile
 from loguru import logger
 
+import fastretrieval.common.model_management as model_management_module
+from fastretrieval.common.model_description import BaseModelDescription, ModelSource
 from fastretrieval.common.model_management import ModelManagement
 
 
@@ -360,3 +369,169 @@ class TestPrepareGcsCacheCleanup:
         ModelManagement._prepare_gcs_cache(cache_tmp_dir, model_tmp_dir, model_tar_gz)
 
         assert not model_tar_gz.exists()
+
+
+class _ConditionInternals(Protocol):
+    _waiters: deque[object]
+
+
+class _SemaphoreInternals(Protocol):
+    _cond: _ConditionInternals
+
+
+def test_get_session_reuses_a_session_created_while_waiting_for_the_lock():
+    """The second ``is None`` check inside the lock must see another thread's session."""
+    gate = threading.Semaphore(0)
+    # The typeshed stubs do not declare the private Condition that CPython's Semaphore uses.
+    gate_internals = cast(_SemaphoreInternals, gate)
+
+    class RacingManagement(ModelManagement):
+        _session = None
+        _session_lock = gate
+
+    winner = requests.Session()
+    result: dict[str, requests.Session] = {}
+    thread = threading.Thread(
+        target=lambda: result.setdefault("session", RacingManagement._get_session())
+    )
+    thread.start()
+    # Semaphore keeps its blocked acquirers on the private Condition; waiting for one
+    # proves the thread passed the unlocked check before the session appears.
+    deadline = time.monotonic() + 10
+    while not gate_internals._cond._waiters and time.monotonic() < deadline:
+        time.sleep(0.001)
+    assert gate_internals._cond._waiters, "the caller never blocked on the session lock"
+
+    RacingManagement._session = winner
+    gate.release()
+    thread.join(timeout=10)
+
+    try:
+        assert not thread.is_alive()
+        assert result["session"] is winner
+    finally:
+        winner.close()
+
+
+def _description(model: str, hf: str | None = "acme/repo", url: str | None = None):
+    return BaseModelDescription(
+        model=model,
+        sources=ModelSource(hf=hf, url=url),
+        model_file="model.onnx",
+    )
+
+
+def test_check_model_exists_rejects_a_registered_name_case_insensitively():
+    registered = _description("acme/Registered")
+
+    class Registry(ModelManagement):
+        @classmethod
+        def _list_supported_models(cls) -> list[BaseModelDescription]:
+            return [registered]
+
+    with pytest.raises(
+        ValueError, match="Model ACME/registered is already registered in Registry"
+    ):
+        Registry._check_model_exists("ACME/registered")
+    Registry._check_model_exists("acme/unregistered")
+
+
+def test_download_file_from_gcs_rejects_sha256_mismatch_and_cleans_up(tmp_path):
+    chunk = b"actual content"
+    wrong_sha256 = base64.b64encode(hashlib.sha256(b"other content").digest()).decode()
+    # GCS is a network boundary: the HTTP response is stubbed, the hashing runs for real.
+    response = MagicMock()
+    response.status_code = 200
+    response.headers = {
+        "content-length": str(len(chunk)),
+        "x-goog-hash": f"md5=AAAA, sha256={wrong_sha256}",
+    }
+    response.iter_content.return_value = [chunk]
+    session = MagicMock()
+    session.get.return_value = response
+    output = tmp_path / "model.onnx"
+
+    with (
+        patch.object(ModelManagement, "_get_session", return_value=session),
+        pytest.raises(ValueError, match="File integrity check failed: expected SHA256"),
+    ):
+        ModelManagement.download_file_from_gcs(
+            "https://storage.googleapis.com/bucket/model.onnx", str(output), show_progress=False
+        )
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_download_file_from_gcs_accepts_matching_sha256_even_with_bad_md5(tmp_path):
+    chunk = b"verified content"
+    sha256 = base64.b64encode(hashlib.sha256(chunk).digest()).decode()
+    # GCS is a network boundary: the HTTP response is stubbed, the hashing runs for real.
+    response = MagicMock()
+    response.status_code = 200
+    response.headers = {
+        "content-length": str(len(chunk)),
+        "x-goog-hash": f"md5=AAAA, sha256={sha256}",
+    }
+    response.iter_content.return_value = [chunk]
+    session = MagicMock()
+    session.get.return_value = response
+    output = tmp_path / "model.onnx"
+
+    with patch.object(ModelManagement, "_get_session", return_value=session):
+        result = ModelManagement.download_file_from_gcs(
+            "https://storage.googleapis.com/bucket/model.onnx", str(output), show_progress=False
+        )
+
+    assert result == str(output)
+    assert output.read_bytes() == chunk
+    assert [entry.name for entry in tmp_path.iterdir()] == ["model.onnx"]
+
+
+class TestVerifyFilesFromMetadata:
+    """Stored metadata is trusted only while every file is present and matches."""
+
+    def test_missing_file_fails_verification(self, tmp_path):
+        metadata = {"model.onnx": {"size": 4, "blob_id": "abc"}}
+
+        assert ModelManagement._verify_files_from_metadata(tmp_path, metadata, []) is False
+
+    @pytest.mark.parametrize(
+        ("repo_file", "expected"),
+        [
+            (RepoFile(path="model.onnx", size=4, oid="abc"), True),
+            (RepoFile(path="model.onnx", size=5, oid="abc"), False),
+            (RepoFile(path="model.onnx", size=4, oid="changed"), False),
+            (RepoFile(path="other.onnx", size=4, oid="abc"), False),
+        ],
+    )
+    def test_online_verification_compares_size_and_blob_id(self, tmp_path, repo_file, expected):
+        (tmp_path / "model.onnx").write_bytes(b"onnx")
+        metadata = {"model.onnx": {"size": 4, "blob_id": "abc"}}
+
+        result = ModelManagement._verify_files_from_metadata(tmp_path, metadata, [repo_file])
+
+        assert result is expected
+
+    @pytest.mark.parametrize(("size", "expected"), [(4, True), (3, False)])
+    def test_offline_verification_compares_size_on_disk(self, tmp_path, size, expected):
+        (tmp_path / "model.onnx").write_bytes(b"onnx")
+        metadata = {"model.onnx": {"size": size, "blob_id": "abc"}}
+
+        assert ModelManagement._verify_files_from_metadata(tmp_path, metadata, []) is expected
+
+
+def test_attempt_download_returns_none_when_only_hf_source_fails(tmp_path, monkeypatch):
+    def offline_model_info(repo_id, *args, **kwargs):
+        raise OSError(f"network unavailable for {repo_id}")
+
+    def unexpected_snapshot_download(*args, **kwargs):
+        raise AssertionError("snapshot_download must not run without a resolved revision")
+
+    # HuggingFace Hub is a network boundary: both entry points used by the remote path fail.
+    monkeypatch.setattr(model_management_module, "model_info", offline_model_info)
+    monkeypatch.setattr(model_management_module, "snapshot_download", unexpected_snapshot_download)
+
+    result = ModelManagement._attempt_download(_description("acme/hf-only"), str(tmp_path))
+
+    assert result is None
+    assert list(tmp_path.iterdir()) == []

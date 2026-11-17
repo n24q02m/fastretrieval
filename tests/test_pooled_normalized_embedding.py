@@ -81,3 +81,17 @@ class TestPooledNormalizedEmbeddingWorker:
         mock_pooled_normalized_embedding.assert_called_once_with(
             model_name=model_name, cache_dir=cache_dir, threads=1, extra=extra_arg
         )
+
+
+def test_worker_class_is_the_pooled_normalized_worker():
+    assert PooledNormalizedEmbedding._get_worker_class() is PooledNormalizedEmbeddingWorker
+
+
+def test_post_process_truncates_to_the_requested_dimension_before_normalizing():
+    embeddings = np.array([[[3.0, 4.0, 12.0, 0.0]]], dtype=np.float32)
+    mask = np.array([[1]], dtype=np.int64)
+    output = OnnxOutputContext(model_output=embeddings, attention_mask=mask)
+
+    result = np.asarray(DummyModel()._post_process_onnx_output(output, dim=2))
+
+    np.testing.assert_allclose(result, [[0.6, 0.8]], rtol=1e-6)

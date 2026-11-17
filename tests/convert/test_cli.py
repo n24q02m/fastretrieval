@@ -179,3 +179,84 @@ def test_missing_deps_message_names_the_requirements_file():
 
     with pytest.raises(ImportError, match="requirements.txt"):
         require_convert_deps("a_module_that_does_not_exist_anywhere")
+
+
+def _converted_dir(tmp_path, *, task, formats, artifacts):
+    from fastretrieval.contract import ModelContract, PreprocessorSpec
+    from fastretrieval.convert.manifest import write_manifest
+
+    directory = tmp_path / "converted"
+    contract = ModelContract(
+        model_id="acme/tiny-model",
+        source="acme/tiny-model",
+        task=task,
+        modality="text",
+        model_family="qwen3",
+        output_dim=2 if task == "generative_reranker" else 4,
+        output_shape=(2,) if task == "generative_reranker" else (4,),
+        pooling="LAST_TOKEN",
+        normalization=task == "dense",
+        max_seq_len=32,
+        preprocessor=PreprocessorSpec(kind="text"),
+        artifact_formats=formats,
+        tokenizer_files=("tokenizer.json",),
+        quantization="Q4_K_M" if formats == ("gguf",) else "int8,q4f16",
+    )
+    (directory / "tokenizer.json").parent.mkdir(parents=True)
+    (directory / "tokenizer.json").write_text("{}", encoding="utf-8")
+    for relative, megabytes in artifacts.items():
+        path = directory / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"\0" * (megabytes * 1024 * 1024))
+    write_manifest(directory, contract)
+    return directory
+
+
+def test_card_command_writes_an_onnx_embedding_card_with_real_sizes(tmp_path, capsys):
+    directory = _converted_dir(
+        tmp_path,
+        task="dense",
+        formats=("onnx",),
+        artifacts={"onnx/model_quantized.onnx": 3, "onnx/model_q4f16.onnx": 2},
+    )
+
+    exit_code = main(["card", str(directory), "--source", "acme/tiny-model"])
+
+    readme = directory / "README.md"
+    assert exit_code == 0
+    assert capsys.readouterr().out.strip() == str(readme)
+    card = readme.read_text(encoding="utf-8")
+    assert "# ONNX build of acme/tiny-model" in card
+    assert "pipeline_tag: feature-extraction" in card
+    assert "| int8 | `onnx/model_quantized.onnx` | 3 MB |" in card
+    assert "| q4f16 | `onnx/model_q4f16.onnx` | 2 MB |" in card
+
+
+def test_card_command_lists_nested_gguf_files_for_a_reranker(tmp_path, capsys):
+    directory = _converted_dir(
+        tmp_path,
+        task="generative_reranker",
+        formats=("gguf",),
+        artifacts={"variants/tiny-model-q4-k-m.GGUF": 1},
+    )
+
+    exit_code = main(["card", str(directory), "--source", "acme/tiny-model"])
+
+    assert exit_code == 0
+    assert capsys.readouterr().out.strip() == str(directory / "README.md")
+    card = (directory / "README.md").read_text(encoding="utf-8")
+    assert "# GGUF build of acme/tiny-model" in card
+    assert "pipeline_tag: text-classification" in card
+    assert "from fastretrieval import TextCrossEncoder" in card
+    assert "| variants/tiny-model-q4-k-m.GGUF | `variants/tiny-model-q4-k-m.GGUF` | 1 MB |" in card
+
+
+def test_card_command_refuses_a_manifest_from_another_source(tmp_path):
+    directory = _converted_dir(
+        tmp_path, task="dense", formats=("onnx",), artifacts={"onnx/model_quantized.onnx": 1}
+    )
+
+    with pytest.raises(ValueError, match="manifest source mismatch"):
+        main(["card", str(directory), "--source", "acme/other-model"])
+
+    assert not (directory / "README.md").exists()
