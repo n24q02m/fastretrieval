@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.14.1-beta.1 (2026-11-17)
+
+### Bug Fixes
+
+- Stop the release when the relock in build_command fails
+  ([#197](https://github.com/n24q02m/fastretrieval/pull/197),
+  [`539e9d6`](https://github.com/n24q02m/fastretrieval/commit/539e9d695d82f416bef4334226f7648120b2e71e))
+
+
 ## v1.14.0 (2026-11-17)
 
 
