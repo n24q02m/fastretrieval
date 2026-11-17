@@ -18,6 +18,9 @@ class ImageEmbeddingBase(ModelManagement[DenseModelDescription]):
         threads: int | None = None,
         **kwargs: Any,
     ):
+        # Runs the ONNX runner's __init__ next in the MRO, which sets ``model`` to
+        # None so a lazily loaded embedding opens its session on the first embed().
+        super().__init__()
         self.model_name = model_name
         self.cache_dir = cache_dir
         self.threads = threads

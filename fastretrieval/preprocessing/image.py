@@ -6,6 +6,7 @@ gây lỗi, nên mọi giá trị đã khai báo đều lấy từ :class:`Prepr
 
 from __future__ import annotations
 
+import io
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -44,7 +45,13 @@ def preprocess_images(images: Iterable[object], spec: PreprocessorSpec) -> np.nd
         if callable(convert):
             image = convert("RGB")
         else:
-            with Image.open(Path(str(item))) as opened:
+            # Encoded bytes are decoded from memory; anything else names a file.
+            source = (
+                io.BytesIO(item)
+                if isinstance(item, (bytes, bytearray, memoryview))
+                else Path(str(item))
+            )
+            with Image.open(source) as opened:
                 image = opened.convert("RGB")
         resized = image.resize((width, height), Image.Resampling.BICUBIC)
         # Transpose individual arrays before appending to return contiguous array from np.stack
