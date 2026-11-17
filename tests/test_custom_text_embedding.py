@@ -1,5 +1,6 @@
 """Tests for CustomTextEmbedding — covers custom_text_embedding.py."""
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -15,7 +16,11 @@ from fastretrieval.common.model_description import (
 )
 from fastretrieval.common.onnx_model import OnnxOutputContext
 from fastretrieval.common.types import NumpyArray
-from fastretrieval.text.custom_text_embedding import CustomTextEmbedding
+from fastretrieval.text.custom_text_embedding import (
+    CustomTextEmbedding,
+    CustomTextEmbeddingWorker,
+)
+from tests.onnx_runtime_stub import StubSession, install_stub_runtime, write_tokenizer_files
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -370,3 +375,86 @@ class TestPostProcessOnnxOutput:
         result = np.asarray(emb._post_process_onnx_output(ctx))
         # Unnormalized: L2 should be 5.0
         np.testing.assert_allclose(np.linalg.norm(result), 5.0, atol=1e-6)
+
+
+# ===========================================================================
+# Worker hand-off of the runtime registry
+# ===========================================================================
+
+
+def _hidden_state_from_token_ids(feed: dict[str, np.ndarray]) -> np.ndarray:
+    """Every token's hidden state is ``[token_id, 1, 2, 2]``, so pooling is easy to predict."""
+    ids = feed["input_ids"].astype(np.float32)
+    ones = np.ones_like(ids)
+    return np.stack([ids, ones, 2 * ones, 2 * ones], axis=-1)
+
+
+@pytest.fixture
+def stub_model_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[tuple[Path, dict[str, int]]]:
+    model_dir = tmp_path / "model"
+    vocab = write_tokenizer_files(model_dir, ["alpha", "beta"])
+    # onnxruntime boundary: no CPython 3.15 wheel exists, so the session is a numpy stand-in.
+    install_stub_runtime(monkeypatch, StubSession(_hidden_state_from_token_ids))
+    CustomTextEmbedding._clear_model_cache()
+    yield model_dir, vocab
+    CustomTextEmbedding._clear_model_cache()
+
+
+def _mean_normalized_description() -> CustomDenseModelDescription:
+    return CustomDenseModelDescription(
+        model=_MODEL_NAME,
+        sources=ModelSource(hf=_MODEL_NAME),
+        model_file="onnx/model.onnx",
+        description="test",
+        license="MIT",
+        size_in_GB=0.1,
+        dim=4,
+        pooling=PoolingType.MEAN,
+        normalization=True,
+    )
+
+
+class TestWorkerRegistryHandOff:
+    def test_worker_class_is_the_custom_worker(self) -> None:
+        assert CustomTextEmbedding._get_worker_class() is CustomTextEmbeddingWorker
+
+    def test_extra_worker_params_ship_every_registered_description(
+        self, stub_model_dir: tuple[Path, dict[str, int]], tmp_path: Path
+    ) -> None:
+        model_dir, _ = stub_model_dir
+        CustomTextEmbedding._SUPPORTED.clear()
+        desc = _register(pooling=PoolingType.MEAN)
+        other = _register(model_name="test-org/other-model", pooling=PoolingType.CLS)
+
+        model = CustomTextEmbedding(
+            model_name=_MODEL_NAME,
+            cache_dir=str(tmp_path / "cache"),
+            specific_model_path=str(model_dir),
+        )
+
+        assert model._extra_worker_params() == {"custom_registry": [desc, other]}
+
+    def test_worker_imports_the_shipped_registry_into_a_fresh_process_state(
+        self, stub_model_dir: tuple[Path, dict[str, int]], tmp_path: Path
+    ) -> None:
+        model_dir, vocab = stub_model_dir
+        CustomTextEmbedding._SUPPORTED.clear()
+        desc = _mean_normalized_description()
+
+        worker = CustomTextEmbeddingWorker(
+            _MODEL_NAME,
+            str(tmp_path / "cache"),
+            custom_registry=[desc],
+            specific_model_path=str(model_dir),
+        )
+        ((idx, output),) = list(worker.process([(1, ["alpha beta"])]))
+        vector = np.asarray(worker.model._post_process_onnx_output(output))
+
+        assert {_MODEL_NAME.lower(): desc} == CustomTextEmbedding._SUPPORTED
+        assert type(worker.model) is CustomTextEmbedding
+        assert worker.model.threads == 1
+        assert idx == 1
+        expected = np.array([(vocab["alpha"] + vocab["beta"]) / 2, 1.0, 2.0, 2.0])
+        np.testing.assert_allclose(vector, [expected / np.linalg.norm(expected)], rtol=1e-6)

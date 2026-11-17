@@ -90,6 +90,24 @@ class BulkWorker(Worker):
             yield idx, b"x" * (1 << 18)  # 256 KiB, against a 64 KiB pipe buffer
 
 
+class ReversingWorker(Worker):
+    """
+    A worker that drains its whole input before answering, newest item first.
+
+    With a single worker this delivers results strictly out of order, which is
+    the deterministic way to make ordered_map buffer early arrivals.
+    """
+
+    @classmethod
+    def start(cls, **kwargs: Any) -> "ReversingWorker":
+        return cls()
+
+    def process(self, items: Iterable[tuple[int, Any]]) -> Iterable[tuple[int, Any]]:
+        drained = list(items)
+        for idx, item in reversed(drained):
+            yield idx, item * 10
+
+
 # --- Tests ---
 
 
@@ -817,3 +835,15 @@ def test_check_worker_health_called_during_processing():
 
         # It should be called at least once
         assert mock_check_health.called
+
+
+def test_semi_ordered_map_reports_out_of_order_arrivals_with_indexes():
+    pool = ParallelWorkerPool(worker=ReversingWorker, config=PoolConfig(num_workers=1))
+
+    assert list(pool.semi_ordered_map([1, 2, 3])) == [(2, 30), (1, 20), (0, 10)]
+
+
+def test_ordered_map_buffers_out_of_order_results_until_the_gap_closes():
+    pool = ParallelWorkerPool(worker=ReversingWorker, config=PoolConfig(num_workers=1))
+
+    assert list(pool.ordered_map([1, 2, 3, 4])) == [10, 20, 30, 40]

@@ -1,7 +1,14 @@
 """Tests for CustomTextCrossEncoder."""
 
+import numpy as np
+import pytest
+
 from fastretrieval.common.model_description import BaseModelDescription, ModelSource
-from fastretrieval.rerank.cross_encoder.custom_text_cross_encoder import CustomTextCrossEncoder
+from fastretrieval.rerank.cross_encoder.custom_text_cross_encoder import (
+    CustomTextCrossEncoder,
+    CustomTextCrossEncoderWorker,
+)
+from tests.onnx_runtime_stub import StubSession, install_stub_runtime, write_tokenizer_files
 
 
 class TestCustomTextCrossEncoder:
@@ -93,3 +100,94 @@ class TestCustomTextCrossEncoder:
             assert encoder.model_name == "org/init-test-model"
             assert encoder.threads == 4
             mock_load.assert_called_once()
+
+
+_WORKER_MODEL = "org/worker-model"
+
+
+@pytest.fixture
+def isolated_registry(monkeypatch):
+    """Give the custom registry a private, empty model list and a fresh description cache."""
+    monkeypatch.setattr(CustomTextCrossEncoder, "SUPPORTED_MODELS", [])
+    CustomTextCrossEncoder._clear_model_cache()
+    yield CustomTextCrossEncoder.SUPPORTED_MODELS
+    CustomTextCrossEncoder._clear_model_cache()
+
+
+@pytest.fixture
+def stub_model_dir(tmp_path, monkeypatch):
+    """A real tokenizer directory plus a stub graph scoring each pair by its "alpha" count."""
+    model_dir = tmp_path / "model"
+    vocab = write_tokenizer_files(model_dir, ["alpha", "beta", "gamma"])
+    alpha_id = vocab["alpha"]
+
+    def compute(feed: dict[str, np.ndarray]) -> np.ndarray:
+        return (feed["input_ids"] == alpha_id).sum(axis=1, keepdims=True).astype(np.float32)
+
+    # onnxruntime boundary: no CPython 3.15 wheel exists, so the session is a numpy stand-in.
+    install_stub_runtime(monkeypatch, StubSession(compute))
+    return model_dir
+
+
+def _worker_description() -> BaseModelDescription:
+    return BaseModelDescription(
+        model=_WORKER_MODEL,
+        sources=ModelSource(hf=_WORKER_MODEL),
+        model_file="onnx/model.onnx",
+        description="",
+        license="",
+        size_in_GB=0.0,
+    )
+
+
+def test_worker_reregisters_the_shipped_registry_and_scores_pairs(
+    isolated_registry, stub_model_dir, tmp_path
+):
+    payload = [_worker_description()]
+
+    worker = CustomTextCrossEncoderWorker(
+        _WORKER_MODEL,
+        str(tmp_path / "cache"),
+        custom_registry=payload,
+        specific_model_path=str(stub_model_dir),
+    )
+    ((idx, output),) = list(worker.process([(4, [("alpha", "alpha beta"), ("beta", "gamma")])]))
+
+    assert CustomTextCrossEncoder._get_worker_class() is CustomTextCrossEncoderWorker
+    assert [desc.model for desc in isolated_registry] == [_WORKER_MODEL]
+    assert type(worker.model) is CustomTextCrossEncoder
+    assert worker.model.threads == 1
+    assert idx == 4
+    np.testing.assert_array_equal(output.model_output, [2.0, 0.0])
+
+
+def test_worker_without_a_registry_payload_uses_the_models_already_registered(
+    isolated_registry, stub_model_dir, tmp_path
+):
+    CustomTextCrossEncoder.add_model(_worker_description())
+
+    worker = CustomTextCrossEncoderWorker(
+        _WORKER_MODEL, str(tmp_path / "cache"), specific_model_path=str(stub_model_dir)
+    )
+
+    assert isinstance(worker.model, CustomTextCrossEncoder)
+    assert worker.model.model_description.model == _WORKER_MODEL
+    assert len(isolated_registry) == 1
+    assert worker.model._extra_worker_params() == {"custom_registry": [_worker_description()]}
+
+
+def test_import_registry_skips_models_already_present_in_any_case(isolated_registry):
+    original = _worker_description()
+    shouted = BaseModelDescription(
+        model=_WORKER_MODEL.upper(),
+        sources=ModelSource(hf=_WORKER_MODEL),
+        model_file="onnx/model.onnx",
+        description="",
+        license="",
+        size_in_GB=0.0,
+    )
+
+    CustomTextCrossEncoder._import_registry([original, shouted])
+    CustomTextCrossEncoder._import_registry([original])
+
+    assert isolated_registry == [original]

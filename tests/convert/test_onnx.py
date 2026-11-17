@@ -59,3 +59,38 @@ def test_unknown_variant_is_rejected():
 
     with pytest.raises(ValueError, match="unknown variant"):
         convert_onnx("acme/tiny", "/tmp/out", variants=["int8", "bf8"])
+
+
+def test_fix_cast_nodes_leaves_casts_to_other_types_alone():
+    from onnx import TensorProto, helper
+
+    graph = helper.make_graph(
+        [
+            helper.make_node("Cast", ["a"], ["ids"], to=TensorProto.INT64),
+            helper.make_node("Cast", ["a"], ["half"], to=TensorProto.FLOAT),
+        ],
+        "casts",
+        [helper.make_tensor_value_info("a", TensorProto.FLOAT, [1])],
+        [helper.make_tensor_value_info("ids", TensorProto.INT64, [1])],
+    )
+
+    fix_cast_nodes(graph)
+
+    assert _all_cast_targets(graph) == [TensorProto.INT64, TensorProto.FLOAT16]
+
+
+def test_tokenizer_files_must_end_up_as_files_not_directories(tmp_path):
+    from fastretrieval.convert.onnx import _ensure_tokenizer_files
+
+    source = tmp_path / "model"
+    source.mkdir()
+    (source / "tokenizer.json").write_text("{}", encoding="utf-8")
+    artifact = tmp_path / "artifact"
+    (artifact / "tokenizer.json").mkdir(parents=True)
+
+    with pytest.raises(
+        FileNotFoundError, match=r"tokenizer files were not exported: tokenizer\.json"
+    ):
+        _ensure_tokenizer_files(str(source), artifact, ("tokenizer.json",))
+
+    assert (artifact / "tokenizer.json" / "tokenizer.json").read_text(encoding="utf-8") == "{}"

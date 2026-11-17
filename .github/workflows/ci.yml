@@ -90,7 +90,9 @@ jobs:
   # Lint & Test (Python)
   # ============================================================================
   lint-and-test:
-    name: Lint & Test (Python ${{ matrix.python }})
+    # Ubuntu rows keep the bare `Lint & Test (Python X)` name: the branch ruleset
+    # requires `Lint & Test (Python 3.13)` by that exact context.
+    name: Lint & Test (Python ${{ matrix.python }}${{ matrix.os != 'ubuntu-latest' && format(', {0}', matrix.os) || '' }})
     if: >-
       github.event_name == 'push'
       || github.event_name == 'workflow_dispatch'
@@ -112,14 +114,24 @@ jobs:
       # note in scripts/ci_versions.py.
       matrix:
         python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-    runs-on: ubuntu-latest
+        # Every supported minor runs on all three desktop OSes. The coverage gate
+        # (`fail_under` in pyproject.toml) is enforced on each row, so a platform or
+        # interpreter whose suite exercises less of the package fails on its own.
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    # The test step is a bash script; Windows would otherwise run it in PowerShell.
+    defaults:
+      run:
+        shell: bash
     permissions:
       contents: read
       pull-requests: write
       # The Codecov upload authenticates with this job's OIDC token.
       id-token: write
     steps:
+      # harden-runner supports Linux runners only.
       - name: Harden Runner
+        if: matrix.os == 'ubuntu-latest'
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
@@ -142,7 +154,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           if [ -d "tests" ] && [ "$(ls -A tests/*.py 2>/dev/null)" ]; then
-            uv run pytest -m "not integration" --tb=short -rs --cov=fastretrieval --cov-report=xml
+            uv run pytest -m "not integration" --tb=short -rs --cov=fastretrieval --cov-report=term-missing --cov-report=xml
           else
             echo "No tests found, skipping..."
           fi
@@ -151,8 +163,9 @@ jobs:
       # is stored, so the upload authenticates with OIDC and fails the job when Codecov
       # refuses it. Pull requests skip it: a fork or Dependabot run cannot always mint
       # an OIDC token, and the required check must not depend on Codecov being reachable.
+      # Only the Ubuntu rows upload, as before the OS axis was added.
       - name: Upload coverage to Codecov
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: coverage.xml

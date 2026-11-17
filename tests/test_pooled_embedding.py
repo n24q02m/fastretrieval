@@ -3,8 +3,11 @@
 import numpy as np
 import pytest
 
+import fastretrieval.text.pooled_embedding as pooled_embedding_module
+from fastretrieval.common.model_description import DenseModelDescription, ModelSource
 from fastretrieval.common.onnx_model import OnnxOutputContext
-from fastretrieval.text.pooled_embedding import PooledEmbedding
+from fastretrieval.text.pooled_embedding import PooledEmbedding, PooledEmbeddingWorker
+from tests.onnx_runtime_stub import StubSession, install_stub_runtime, write_tokenizer_files
 
 
 class MockPooledEmbedding(PooledEmbedding):
@@ -103,3 +106,62 @@ def test_mean_pooling_varying_lengths():
     expected = np.array([[3.0, 4.0], [7.0, 8.0]], dtype=np.float32)
 
     np.testing.assert_allclose(result, expected, atol=1e-6)
+
+
+_MEAN_MODEL = "org/mean-pooled"
+
+
+def _hidden_state_from_token_ids(feed: dict[str, np.ndarray]) -> np.ndarray:
+    """Every token's hidden state is ``[token_id, 1, 2, 2]``, so pooling is easy to predict."""
+    ids = feed["input_ids"].astype(np.float32)
+    ones = np.ones_like(ids)
+    return np.stack([ids, ones, 2 * ones, 2 * ones], axis=-1)
+
+
+@pytest.fixture
+def mean_pooled_registry(monkeypatch):
+    """Swap in a private registry; ``_list_supported_models`` reads the module list per call."""
+    desc = DenseModelDescription(
+        model=_MEAN_MODEL,
+        dim=4,
+        sources=ModelSource(hf=_MEAN_MODEL),
+        model_file="onnx/model.onnx",
+        description="",
+        license="",
+        size_in_GB=0.0,
+    )
+    monkeypatch.setattr(pooled_embedding_module, "supported_pooled_models", [desc])
+    PooledEmbedding._clear_model_cache()
+    yield desc
+    PooledEmbedding._clear_model_cache()
+
+
+def test_post_process_truncates_mean_pooled_vectors_to_the_requested_dimension():
+    embeddings = np.array([[[1.0, 2.0, 3.0, 4.0], [3.0, 4.0, 5.0, 6.0]]], dtype=np.float32)
+    mask = np.array([[1, 1]], dtype=np.int64)
+    output = OnnxOutputContext(model_output=embeddings, attention_mask=mask)
+
+    pooled = np.asarray(MockPooledEmbedding()._post_process_onnx_output(output, dim=2))
+
+    np.testing.assert_allclose(pooled, [[2.0, 3.0]])
+
+
+def test_worker_builds_a_single_threaded_mean_pooling_model(
+    mean_pooled_registry, tmp_path, monkeypatch
+):
+    model_dir = tmp_path / "model"
+    vocab = write_tokenizer_files(model_dir, ["alpha", "beta"])
+    # onnxruntime boundary: no CPython 3.15 wheel exists, so the session is a numpy stand-in.
+    install_stub_runtime(monkeypatch, StubSession(_hidden_state_from_token_ids))
+
+    worker = PooledEmbeddingWorker(
+        _MEAN_MODEL, str(tmp_path / "cache"), specific_model_path=str(model_dir)
+    )
+    ((idx, output),) = list(worker.process([(2, ["alpha beta"])]))
+    pooled = np.asarray(worker.model._post_process_onnx_output(output))
+
+    assert PooledEmbedding._get_worker_class() is PooledEmbeddingWorker
+    assert type(worker.model) is PooledEmbedding
+    assert worker.model.threads == 1
+    assert idx == 2
+    np.testing.assert_allclose(pooled, [[(vocab["alpha"] + vocab["beta"]) / 2, 1.0, 2.0, 2.0]])
