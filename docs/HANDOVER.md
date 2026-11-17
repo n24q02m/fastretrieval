@@ -2,7 +2,7 @@
 
 ## Product boundary
 
-`fastretrieval` is a Python retrieval runtime, not an MCP server. It provides dense, sparse, late-interaction, multimodal, and cross-encoder facades over ONNX Runtime and optional GGUF backends. Wet and Better Code Review Graph currently consume its public embedding contracts; canonical Mnemo main now declares `fastretrieval>=1.12.1,<2` as well, so the legacy distribution has no known consumer left. Consumers own transport, authentication, and deployment.
+`fastretrieval` is a Python retrieval runtime, not an MCP server. It provides dense, sparse, late-interaction, multimodal, and cross-encoder facades over ONNX Runtime and optional GGUF backends. Wet, Better Code Review Graph, and Mnemo consume its public embedding and reranking facades, so the legacy distribution has no known consumer left. Consumers own transport, authentication, and deployment.
 
 Package identity is `fastretrieval` for both distribution and import. Qwen3 names remain model identifiers. The deprecated `QWEN3_EMBED_*` environment variables remain readable and warn; `FASTRETRIEVAL_*` values take precedence.
 
@@ -35,7 +35,7 @@ SPLADE reduction masks padded tokens before max/log processing and uses bounded 
 
 ## Consumer contract
 
-Wet declares `fastretrieval>=1.1.0,<2` and uses `fastretrieval.TextEmbedding` with the default Qwen3 model and optional dimensions. Better Code Review Graph declares `fastretrieval>=1.1.0b1,<2` and resolves the public `TextEmbedding` registry, including manifest-backed custom models. Canonical Mnemo main declares `fastretrieval>=1.12.1,<2`; treat that as a source-level declaration only until a runtime check confirms the facade it imports. Consumers should depend on the published `fastretrieval` package and import public facades from `fastretrieval`. Do not add a `qwen3-embed` dependency or invent a fallback import in this repository. Keep model selection explicit for non-dense facades. Consumer changes must verify the exact producer artifact before adoption; a source merge alone is not runtime evidence.
+Wet, Better Code Review Graph, and Mnemo each declare their `fastretrieval` range in `[project].dependencies` of their own `pyproject.toml`; this file does not repeat the ranges, so a consumer bump never leaves it stale. All three import the `TextEmbedding` and `TextCrossEncoder` facades and register custom models through `CustomModelSpec`; Wet and Mnemo also use `CustomRerankerSpec`, Better Code Review Graph reads `fastretrieval.contract.ModelContract` for manifest-backed custom models, and Mnemo calls `define_cache_dir`. Consumers should depend on the published `fastretrieval` package and import public facades from `fastretrieval`. Do not add a `qwen3-embed` dependency or invent a fallback import in this repository. Keep model selection explicit for non-dense facades. Consumer changes must verify the exact producer artifact before adoption; a source merge alone is not runtime evidence.
 
 ## Modernization map
 
