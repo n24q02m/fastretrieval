@@ -11,12 +11,16 @@ import io
 
 import numpy as np
 import pytest
-from PIL import Image
 
 from fastretrieval.contract import PreprocessorSpec
 from fastretrieval.models.image.onnx_embedding import OnnxImageEmbedding
-from fastretrieval.models.image.transform.operators import Compose, Resize
 from fastretrieval.preprocessing.image import preprocess_images
+
+# Pillow ships in the optional [image] extra. The integration job installs only the
+# dev group and still collects every module, so a hard import fails it at collection.
+# The transform operators import Pillow at module level, so the tests import them
+# only after this guard.
+Image = pytest.importorskip("PIL.Image", reason="Pillow belongs to the optional [image] extra")
 
 RED = (255, 0, 0)
 # Identity normalization: the tensor fed to the graph is the pixels scaled to [0, 1].
@@ -74,6 +78,8 @@ def _png(color, size=(4, 2)):
 
 @pytest.mark.parametrize("processor", ["CLIPImageProcessor", "SiglipImageProcessor"])
 def test_height_width_resize_keeps_height_on_the_first_spatial_axis(processor):
+    from fastretrieval.models.image.transform.operators import Compose
+
     config = {
         "image_processor_type": processor,
         "do_resize": True,
@@ -115,10 +121,14 @@ def test_image_embedding_embeds_a_single_encoded_image(opened_sessions, tmp_path
 
 
 def test_interpolation_resolver_maps_nearest():
+    from fastretrieval.models.image.transform.operators import Compose
+
     assert Compose._interpolation_resolver("Nearest") is Image.Resampling.NEAREST
 
 
 def test_jina_config_keeps_nearest_given_by_name():
+    from fastretrieval.models.image.transform.operators import Compose, Resize
+
     config = {
         "image_processor_type": "JinaCLIPImageProcessor",
         "size": 4,
@@ -132,6 +142,8 @@ def test_jina_config_keeps_nearest_given_by_name():
 
 
 def test_jina_config_keeps_nearest_given_as_an_integer():
+    from fastretrieval.models.image.transform.operators import Compose, Resize
+
     config = {
         "image_processor_type": "JinaCLIPImageProcessor",
         "size": 4,
@@ -145,5 +157,7 @@ def test_jina_config_keeps_nearest_given_as_an_integer():
 
 
 def test_convnext_config_without_a_size_is_rejected_with_a_value_error():
+    from fastretrieval.models.image.transform.operators import Compose
+
     with pytest.raises(ValueError, match="must contain 'shortest_edge' key"):
         Compose.from_config({"image_processor_type": "ConvNextFeatureExtractor"})
