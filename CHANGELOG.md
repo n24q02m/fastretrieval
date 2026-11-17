@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.14.0-beta.3 (2026-11-17)
+
+### Bug Fixes
+
+- Keep the repo-bootstrap toolkit copy out of ruff
+  ([#194](https://github.com/n24q02m/fastretrieval/pull/194),
+  [`7db58ad`](https://github.com/n24q02m/fastretrieval/commit/7db58ad4ac1c4357d420441d9eb349be4b607d89))
+
+- Stop repeating consumer ranges in the handover
+  ([#195](https://github.com/n24q02m/fastretrieval/pull/195),
+  [`40a3c6a`](https://github.com/n24q02m/fastretrieval/commit/40a3c6ad8c3bb88be06b1b7636f14217ba6eb3b7))
+
+
 ## v1.14.0-beta.2 (2026-11-16)
 
 ### Bug Fixes
