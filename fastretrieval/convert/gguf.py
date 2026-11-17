@@ -114,7 +114,10 @@ def convert_gguf(
 
     output_dir = Path(out_dir)
     output_dir.parent.mkdir(parents=True, exist_ok=True)
-    stem = source.rstrip("/").split("/")[-1].lower()
+    # Path splits on every separator the platform uses (also "\" on Windows), so a local
+    # folder or a hub id "org/name" yields its last component and the file names below
+    # stay inside the staging directory.
+    stem = Path(source).name.lower()
 
     with tempfile.TemporaryDirectory(
         dir=output_dir.parent, prefix=f".{output_dir.name}.staging-"
