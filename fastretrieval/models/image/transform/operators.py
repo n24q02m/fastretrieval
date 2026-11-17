@@ -326,7 +326,8 @@ class Compose:
                 if "shortest_edge" in size:
                     size = size["shortest_edge"]
                 elif "height" in size and "width" in size:
-                    size = (size["height"], size["width"])
+                    # Resize hands a tuple straight to Pillow, which takes (width, height).
+                    size = (size["width"], size["height"])
                 else:
                     raise ValueError(
                         "Size must contain either 'shortest_edge' or 'height' and 'width'."
@@ -338,9 +339,10 @@ class Compose:
                     )
                 )
         elif mode == "ConvNextFeatureExtractor":
-            if "size" in config and "shortest_edge" not in config["size"]:
+            if "shortest_edge" not in config.get("size", {}):
                 raise ValueError(
-                    f"Size dictionary must contain 'shortest_edge' key. Got {config['size'].keys()}"
+                    "Size dictionary must contain 'shortest_edge' key. "
+                    f"Got {config.get('size', {}).keys()}"
                 )
             shortest_edge = config["size"]["shortest_edge"]
             crop_pct = config.get("crop_pct", 0.875)
@@ -366,7 +368,8 @@ class Compose:
             if isinstance(interpolation, str):
                 resample = cls._interpolation_resolver(interpolation)
             else:
-                resample = interpolation or Image.Resampling.BICUBIC
+                # NEAREST is 0, so only a missing value falls back to BICUBIC.
+                resample = Image.Resampling.BICUBIC if interpolation is None else interpolation
 
             if "size" in config:
                 resize_mode = config.get("resize_mode", "shortest")
@@ -485,7 +488,9 @@ class Compose:
             "hamming": Image.Resampling.HAMMING,
         }
 
-        if resample and (method := interpolation_map.get(resample.lower())):
+        # NEAREST is 0, so compare the lookup with None instead of testing its truth.
+        method = interpolation_map.get(resample.lower()) if resample else None
+        if method is not None:
             return method
 
         raise ValueError(f"Unknown interpolation method: {resample}")
