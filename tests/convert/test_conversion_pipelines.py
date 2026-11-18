@@ -1043,9 +1043,8 @@ def test_convert_gguf_converts_quantizes_and_promotes_a_local_model(tmp_path, mo
     llama = install_fake_llama(monkeypatch)
     out = tmp_path / "artifacts" / "tiny-qwen3-gguf"
 
-    # POSIX form: gguf.py derives the file stem by splitting the source on "/".
     result = convert_gguf(
-        source.as_posix(),
+        str(source),
         out,
         llama_cpp=str(llama_root),
         pooling="last_token",
@@ -1086,7 +1085,7 @@ def test_convert_gguf_converts_quantizes_and_promotes_a_local_model(tmp_path, mo
     assert llama.model_files == list(TOKENIZER_FILES)
     contract = load_manifest(out)
     assert (contract.source, contract.model_family, contract.task) == (
-        source.as_posix(),
+        str(source),
         "qwen3",
         "dense",
     )
@@ -1147,7 +1146,7 @@ def test_convert_gguf_fails_when_the_model_lacks_a_tokenizer_file(tmp_path, monk
         match=r"tokenizer file required by manifest is missing: tokenizer_config\.json",
     ):
         convert_gguf(
-            source.as_posix(), out, llama_cpp=str(llama_root), pooling="mean", normalization=True
+            str(source), out, llama_cpp=str(llama_root), pooling="mean", normalization=True
         )
 
     assert len(llama.calls) == 2
@@ -1162,7 +1161,7 @@ def test_convert_gguf_stops_when_the_f16_conversion_fails(tmp_path, monkeypatch)
 
     with pytest.raises(RuntimeError, match=r"^convert_hf_to_gguf\.py exited with code 1$"):
         convert_gguf(
-            source.as_posix(), out, llama_cpp=str(llama_root), pooling="mean", normalization=True
+            str(source), out, llama_cpp=str(llama_root), pooling="mean", normalization=True
         )
 
     assert len(llama.calls) == 1
@@ -1199,7 +1198,7 @@ def test_cli_gguf_prints_the_quantized_file_path(tmp_path, monkeypatch, capsys):
     exit_code = main(
         [
             "gguf",
-            source.as_posix(),
+            str(source),
             "--out",
             str(out),
             "--quant",
