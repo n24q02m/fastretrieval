@@ -83,6 +83,13 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+# Resolve only releases at least 7 days old, the same hold Renovate's
+# minimumReleaseAge puts on every package. Without it Renovate's artifact step
+# (`uv lock`) and lock file maintenance (`uv lock --upgrade`) pick up releases
+# younger than the hold, and Renovate rejects the branch.
+exclude-newer = "7 days"
+
 [tool.hatch.build.targets.wheel]
 packages = ["fastretrieval"]
 
