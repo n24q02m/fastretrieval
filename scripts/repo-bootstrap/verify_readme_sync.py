@@ -26,6 +26,7 @@ Returns exit 0 if all checks pass, 1 if any FAIL, 2 if no manifest detected.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import re
 import sys
@@ -472,9 +473,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     args = parse_args()
     repo_root = Path(args.repo_root).resolve()
     if not repo_root.exists():
