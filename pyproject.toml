@@ -38,7 +38,7 @@ dependencies = [
     # tokenizers consumers (e.g. transformers 5.10.x caps tokenizers<=0.23.0). See #691.
     "tokenizers>=0.23.3,<1.0",
     "huggingface-hub>=1.33.0,<2.0",
-    "loguru>=0.7.3",
+    "loguru>=0.8.0",
 ]
 
 [project.optional-dependencies]
@@ -47,7 +47,7 @@ image = ["pillow>=13.0.0,<14.0"]
 # fastretrieval.server: the shared /embed + /rerank HTTP surface. The model
 # runtime itself is a base dependency, so only the ASGI stack is optional.
 server = [
-    "fastapi>=0.162.2",
+    "fastapi>=0.162.7",
     "uvicorn>=0.54.0",
     "pydantic>=2.14.3,<3",
 ]
@@ -66,9 +66,9 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-xdist>=3.8.0",
     "pytest-timeout>=2.4.0",
-    "syrupy>=6.1.1",
-    "ruff>=0.17.4",
-    "ty>=0.0.99,<0.0.100", # 0.0.96 reports 5 new missing-union-attribute errors (Optional narrowing); fix then lift
+    "syrupy>=7.0.0",
+    "ruff>=0.17.5",
+    "ty>=0.0.103,<0.0.104", # 0.0.96 reports 5 new missing-union-attribute errors (Optional narrowing); fix then lift
     # fastapi.testclient.TestClient drives the server tests over ASGI.
     "httpx>=0.28.1",
     # The ONNX graph passes in fastretrieval.convert (cast fix-up, int8 and q4f16
