@@ -132,7 +132,7 @@ class OnnxMultimodalModel(OnnxModel[T]):
             onnx_input["token_type_ids"] = np.zeros(input_ids.shape, dtype=np.int64)
         onnx_input = self._preprocess_onnx_text_input(onnx_input, **kwargs)
         result = self.model.run(self.ONNX_OUTPUT_NAMES, onnx_input)[0]
-        if getattr(result, "dtype", None) == np.float16:
+        if isinstance(result, np.ndarray) and result.dtype == np.float16:
             result = result.astype(np.float32)
         return OnnxOutputContext(
             model_output=result,
@@ -146,7 +146,7 @@ class OnnxMultimodalModel(OnnxModel[T]):
         onnx_input: dict[str, NumpyArray] = {"pixel_values": self._encode_images(images)}
         onnx_input = self._preprocess_onnx_image_input(onnx_input, **kwargs)
         result = self.model.run(self.ONNX_OUTPUT_NAMES, onnx_input)[0]
-        if getattr(result, "dtype", None) == np.float16:
+        if isinstance(result, np.ndarray) and result.dtype == np.float16:
             result = result.astype(np.float32)
         return OnnxOutputContext(model_output=result)
 

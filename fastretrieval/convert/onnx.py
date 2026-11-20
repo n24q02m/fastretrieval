@@ -130,8 +130,12 @@ def quantize_q4f16(fp32_path: Path, out_path: Path) -> float:
         ),
     )
     quantizer.process()
+    # The DEFAULT algorithm quantizes inside the ONNXModel wrapper the quantizer was built
+    # with; only the RTN and GPTQ algorithms rebind ``quantizer.model`` to a bare ModelProto.
+    wrapped = quantizer.model
+    assert not isinstance(wrapped, onnx.ModelProto), "DEFAULT keeps the ONNXModel wrapper"
 
-    model = float16.convert_float_to_float16(quantizer.model.model, keep_io_types=False)
+    model = float16.convert_float_to_float16(wrapped.model, keep_io_types=False)
     fix_cast_nodes(model.graph)
     model.graph.ClearField("value_info")
     onnx.save(model, str(out_path))

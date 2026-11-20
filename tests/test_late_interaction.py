@@ -22,6 +22,7 @@ def test_colbert_post_process_masks_tokens_and_normalizes_active_rows():
     embeddings = list(model._post_process_onnx_output(output))
 
     np.testing.assert_allclose(embeddings, [np.array([[0.6, 0.8]], dtype=np.float32)])
+    assert output.attention_mask is not None
     assert output.attention_mask.tolist() == [[1, 0, 0]]
 
 

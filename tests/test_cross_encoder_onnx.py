@@ -287,10 +287,12 @@ class TestOnnxEmbedPairs:
         self, loaded_model: ConcreteCrossEncoderModel
     ) -> None:
         pairs = [("q", "d")]
+        session = _make_mock_session(n_pairs=1)
+        loaded_model.model = session
         loaded_model.model_input_names = {"input_ids"}
         loaded_model.tokenizer = _make_mock_tokenizer(n_pairs=1)
         loaded_model.onnx_embed_pairs(pairs)
-        loaded_model.model.run.assert_called_once()  # type: ignore[union-attr]
+        session.run.assert_called_once()
 
     def test_onnx_embed_delegates_to_onnx_embed_pairs(
         self, loaded_model: ConcreteCrossEncoderModel
@@ -756,7 +758,9 @@ class TestOnnxTextCrossEncoderTokenCount:
     def test_token_count_delegates(self, onnx_encoder: OnnxTextCrossEncoder) -> None:
         enc = MagicMock()
         enc.attention_mask = [1, 1, 0, 0]
-        onnx_encoder.tokenizer.encode_batch.return_value = [enc]  # type: ignore[unresolved-attribute]
+        tokenizer = _make_mock_tokenizer()
+        tokenizer.encode_batch.return_value = [enc]
+        onnx_encoder.tokenizer = tokenizer
         result = onnx_encoder.token_count([("q", "d")])
         assert result == 2
 
