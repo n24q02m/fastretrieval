@@ -2,6 +2,65 @@
 
 <!-- version list -->
 
+## v1.15.0-beta.1 (2026-11-21)
+
+### Bug Fixes
+
+- Enforce 95% branch coverage on Linux, Windows and macOS
+  ([#198](https://github.com/n24q02m/fastretrieval/pull/198),
+  [`3b90e89`](https://github.com/n24q02m/fastretrieval/commit/3b90e890cfb55a0c1538260503897af78015bd91))
+
+- Guard the Pillow import with a bare importorskip at module top
+  ([#196](https://github.com/n24q02m/fastretrieval/pull/196),
+  [`37594d2`](https://github.com/n24q02m/fastretrieval/commit/37594d2cf9eae521b83911be920d79a7890cf852))
+
+- Keep GGUF intermediate files in staging when the source is a Windows path
+  ([#199](https://github.com/n24q02m/fastretrieval/pull/199),
+  [`2e5b5e4`](https://github.com/n24q02m/fastretrieval/commit/2e5b5e43e1795b90a29ec676e10ff7ca2f8b1ed0))
+
+- Let Renovate digest updates clear the release-age hold
+  ([#207](https://github.com/n24q02m/fastretrieval/pull/207),
+  [`5f39302`](https://github.com/n24q02m/fastretrieval/commit/5f39302fc301b17334013858107c32d10484de97))
+
+- Let the image regression tests collect without Pillow
+  ([#196](https://github.com/n24q02m/fastretrieval/pull/196),
+  [`37594d2`](https://github.com/n24q02m/fastretrieval/commit/37594d2cf9eae521b83911be920d79a7890cf852))
+
+- Narrow union types that newer ty releases report as errors
+  ([#205](https://github.com/n24q02m/fastretrieval/pull/205),
+  [`7b88437`](https://github.com/n24q02m/fastretrieval/commit/7b88437f75a0bd46ebb0590d5511b2b00c6509d1))
+
+- Pass native local paths in the GGUF conversion tests
+  ([#200](https://github.com/n24q02m/fastretrieval/pull/200),
+  [`776989b`](https://github.com/n24q02m/fastretrieval/commit/776989b366b1ade6426ec2bcfe063054c91b941b))
+
+- Repair image resize order, lazy loading, byte inputs and NEAREST resampling
+  ([#196](https://github.com/n24q02m/fastretrieval/pull/196),
+  [`37594d2`](https://github.com/n24q02m/fastretrieval/commit/37594d2cf9eae521b83911be920d79a7890cf852))
+
+- Resolve dependencies under the same 7-day hold as Renovate
+  ([#206](https://github.com/n24q02m/fastretrieval/pull/206),
+  [`08dcb49`](https://github.com/n24q02m/fastretrieval/commit/08dcb4995c3bf3fb73281f6fbae90f3b5e6d5d20))
+
+- **deps**: Lock file maintenance ([#204](https://github.com/n24q02m/fastretrieval/pull/204),
+  [`dc65aa3`](https://github.com/n24q02m/fastretrieval/commit/dc65aa35d89164e4d36cb6f3a7194200c0d3c156))
+
+- **deps**: Lock file maintenance ([#203](https://github.com/n24q02m/fastretrieval/pull/203),
+  [`c09025c`](https://github.com/n24q02m/fastretrieval/commit/c09025c135ef27b392e06562af52c63f03715e03))
+
+- **deps**: Update onnxruntime to v1.32.0
+  ([#202](https://github.com/n24q02m/fastretrieval/pull/202),
+  [`5fe59dd`](https://github.com/n24q02m/fastretrieval/commit/5fe59dd16738fd1e9f1d69ba2e34e2a2047b5850))
+
+- **deps**: Update patch dependencies ([#201](https://github.com/n24q02m/fastretrieval/pull/201),
+  [`e098bd1`](https://github.com/n24q02m/fastretrieval/commit/e098bd10a0cc7295c774c3b33d8e9f7a8bddb27d))
+
+### Features
+
+- Sync cross-promo section ([#208](https://github.com/n24q02m/fastretrieval/pull/208),
+  [`8a10cf9`](https://github.com/n24q02m/fastretrieval/commit/8a10cf90d6cd43e5e9bfd71f1e4f40e2d4afb11d))
+
+
 ## v1.14.1-beta.1 (2026-11-17)
 
 ### Bug Fixes
