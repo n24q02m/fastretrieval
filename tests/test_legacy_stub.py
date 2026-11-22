@@ -49,6 +49,7 @@ def test_renovate_leaves_the_published_stub_alone():
     # Rules apply in order, so no rule after the freeze may enable updates again.
     assert all("enabled" not in r for r in rules[rules.index(freeze[0]) + 1 :])
 
+
 def test_stub_metadata_names_no_personal_contact():
     assert all(set(author) == {"name"} for author in STUB["authors"])
 
