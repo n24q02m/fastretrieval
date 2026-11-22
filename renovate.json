@@ -169,6 +169,13 @@
       ],
       "enabled": false,
       "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "Leave the qwen3-embed rename stub alone. Its floors describe the published 1.14.1 stub, and rangeStrategy bump would raise them on every fastretrieval release (#210). Keep this rule last, since a later rule could enable the file again.",
+      "matchFileNames": [
+        "legacy/qwen3-embed/pyproject.toml"
+      ],
+      "enabled": false
     }
   ],
   "description": [

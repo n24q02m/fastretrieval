@@ -1,6 +1,7 @@
 """The final qwen3-embed release must stay a thin pointer at fastretrieval."""
 
 import importlib.util
+import json
 import sys
 import tomllib
 from pathlib import Path
@@ -36,6 +37,17 @@ def test_stub_depends_only_on_the_renamed_distribution():
     assert STUB["optional-dependencies"] == {"gguf": [f"{MAIN['name']}[gguf]>=1.12.1"]}
     assert "gguf" in MAIN["optional-dependencies"]
     assert STUB["requires-python"] == MAIN["requires-python"]
+
+
+def test_renovate_leaves_the_published_stub_alone():
+    # The stub's floors describe the 1.14.1 release it stands for. With `rangeStrategy: bump`
+    # Renovate raises them on every fastretrieval release (#210), so it must skip the file.
+    rules = json.loads((ROOT / "renovate.json").read_text(encoding="utf-8"))["packageRules"]
+    stub = "legacy/qwen3-embed/pyproject.toml"
+    freeze = [r for r in rules if stub in r.get("matchFileNames", [])]
+    assert [r.get("enabled") for r in freeze] == [False]
+    # Rules apply in order, so no rule after the freeze may enable updates again.
+    assert all("enabled" not in r for r in rules[rules.index(freeze[0]) + 1 :])
 
 
 def test_stub_metadata_names_no_personal_contact():
