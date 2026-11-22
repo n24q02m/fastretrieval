@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.15.0-beta.2 (2026-11-22)
+
+### Bug Fixes
+
+- **deps**: Update ty to >=0.0.104,<0.0.105
+  ([#209](https://github.com/n24q02m/fastretrieval/pull/209),
+  [`60da72e`](https://github.com/n24q02m/fastretrieval/commit/60da72ec062f442ddb95d8de3fbe5b516f284dff))
+
+
 ## v1.15.0-beta.1 (2026-11-21)
 
 ### Bug Fixes
