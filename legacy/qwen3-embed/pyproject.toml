@@ -16,11 +16,11 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
 ]
-dependencies = ["fastretrieval>=1.12.1"]
+dependencies = ["fastretrieval>=1.13.0"]
 
 [project.optional-dependencies]
 # `pip install qwen3-embed[gguf]` was the documented way to get the GGUF backend.
-gguf = ["fastretrieval[gguf]>=1.12.1"]
+gguf = ["fastretrieval[gguf]>=1.13.0"]
 
 [project.urls]
 Homepage = "https://github.com/n24q02m/fastretrieval"
