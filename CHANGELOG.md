@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.15.1-beta.1 (2026-11-22)
+
+### Bug Fixes
+
+- Format the Renovate stub test with ruff
+  ([#212](https://github.com/n24q02m/fastretrieval/pull/212),
+  [`189ffe0`](https://github.com/n24q02m/fastretrieval/commit/189ffe002caa7bce2683a29e98dfafd2fe500c5f))
+
+- Keep Renovate off the qwen3-embed rename stub
+  ([#212](https://github.com/n24q02m/fastretrieval/pull/212),
+  [`189ffe0`](https://github.com/n24q02m/fastretrieval/commit/189ffe002caa7bce2683a29e98dfafd2fe500c5f))
+
+- **deps**: Lock file maintenance ([#211](https://github.com/n24q02m/fastretrieval/pull/211),
+  [`cb9a2b2`](https://github.com/n24q02m/fastretrieval/commit/cb9a2b239d3f9abae8a70587a3b6fbd29f1000b7))
+
+
 ## v1.15.0 (2026-11-22)
 
 
