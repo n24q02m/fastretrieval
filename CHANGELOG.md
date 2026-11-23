@@ -2,6 +2,29 @@
 
 <!-- version list -->
 
+## v1.16.0-beta.1 (2026-11-23)
+
+### Bug Fixes
+
+- **deps**: Lock file maintenance ([#217](https://github.com/n24q02m/fastretrieval/pull/217),
+  [`237f86d`](https://github.com/n24q02m/fastretrieval/commit/237f86d69f355b2204000e8c0fbb5d8df4740a33))
+
+- **deps**: Lock file maintenance ([#214](https://github.com/n24q02m/fastretrieval/pull/214),
+  [`44f8efe`](https://github.com/n24q02m/fastretrieval/commit/44f8efeda6687f29134d1ae25b7e03bad0a538b7))
+
+- **deps**: Update patch dependencies ([#213](https://github.com/n24q02m/fastretrieval/pull/213),
+  [`07e0fd9`](https://github.com/n24q02m/fastretrieval/commit/07e0fd9fbf82198005a384fb658f226654f2f2a6))
+
+- **deps**: Update syrupy to >=7.0.2 ([#215](https://github.com/n24q02m/fastretrieval/pull/215),
+  [`d3d7a01`](https://github.com/n24q02m/fastretrieval/commit/d3d7a012ec6f50e1df61c0c7da563890c73b56bf))
+
+### Features
+
+- Lift ty pin and lock v2 public api contract
+  ([#218](https://github.com/n24q02m/fastretrieval/pull/218),
+  [`9bc0c7c`](https://github.com/n24q02m/fastretrieval/commit/9bc0c7c25c6fe562ee6daf91ade2e95ed3dcdfae))
+
+
 ## v1.15.1 (2026-11-22)
 
 
