@@ -694,6 +694,8 @@ class ModelManagement(Generic[T]):
         **kwargs: Any,
     ) -> Path | None:
         try:
+            if not model.sources.hf:
+                return None
             cache_kwargs = deepcopy(kwargs)
             cache_kwargs["local_files_only"] = True
             extra_patterns = [model.model_file]
@@ -718,6 +720,8 @@ class ModelManagement(Generic[T]):
     @classmethod
     def _download_from_hf(cls, model: T, cache_dir: str, **kwargs: Any) -> Path | None:
         local_files_only = kwargs.get("local_files_only", False)
+        if not model.sources.hf:
+            return None
         try:
             extra_patterns = [model.model_file]
             extra_patterns.extend(model.additional_files)

@@ -158,7 +158,9 @@ class ModelContract:
             "hf": self.source if hf is None else hf,
             "model_file": model_file,
             "dim": self.output_dim,
-            "pooling": self.pooling.value,
+            "pooling": self.pooling.value
+            if isinstance(self.pooling, PoolingType)
+            else self.pooling,
             "normalization": self.normalization,
             "max_seq_len": self.max_seq_len,
             "preprocessor": self.preprocessor,
@@ -176,7 +178,9 @@ class ModelContract:
             "normalization": self.normalization,
             "output_dim": self.output_dim,
             "output_shape": list(self.output_shape) if self.output_shape is not None else None,
-            "pooling": self.pooling.value,
+            "pooling": self.pooling.value
+            if isinstance(self.pooling, PoolingType)
+            else self.pooling,
             "preprocessor": self.preprocessor.to_dict(),
             "quantization": self.quantization,
             "source": self.source,

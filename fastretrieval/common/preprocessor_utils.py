@@ -65,10 +65,14 @@ def load_tokenizer(model_dir: Path) -> tuple[Tokenizer, dict[str, int]]:
     special_token_to_id: dict[str, int] = {}
 
     for token in tokens_map.values():
+        token_str: str | None = None
         if isinstance(token, str):
-            special_token_to_id[token] = tokenizer.token_to_id(token)
+            token_str = token
         elif isinstance(token, dict):
-            token_str = token.get("content", "")
-            special_token_to_id[token_str] = tokenizer.token_to_id(token_str)
+            token_str = str(token.get("content", ""))
+        if token_str is not None:
+            token_id = tokenizer.token_to_id(token_str)
+            if token_id is not None:
+                special_token_to_id[token_str] = token_id
 
     return tokenizer, special_token_to_id
