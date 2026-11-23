@@ -62,15 +62,33 @@ class PreprocessorSpec:
             kind = raw["kind"]
         except KeyError as exc:
             raise ValueError("preprocessor is missing kind") from exc
-        image_size = raw.get("image_size")
-        if image_size is not None:
-            image_size = tuple(int(value) for value in image_size)
-        image_mean = raw.get("image_mean")
-        if image_mean is not None:
-            image_mean = tuple(float(value) for value in image_mean)
-        image_std = raw.get("image_std")
-        if image_std is not None:
-            image_std = tuple(float(value) for value in image_std)
+        raw_image_size = raw.get("image_size")
+        image_size: tuple[int, int] | None = None
+        if raw_image_size is not None:
+            size_values = [int(value) for value in raw_image_size]
+            if len(size_values) != 2:
+                raise ValueError(
+                    f"image_size must contain two positive values: {tuple(size_values)!r}"
+                )
+            image_size = (size_values[0], size_values[1])
+        raw_image_mean = raw.get("image_mean")
+        image_mean: tuple[float, float, float] | None = None
+        if raw_image_mean is not None:
+            mean_values = [float(value) for value in raw_image_mean]
+            if len(mean_values) != 3:
+                raise ValueError(
+                    f"image_mean must contain three channel values: {tuple(mean_values)!r}"
+                )
+            image_mean = (mean_values[0], mean_values[1], mean_values[2])
+        raw_image_std = raw.get("image_std")
+        image_std: tuple[float, float, float] | None = None
+        if raw_image_std is not None:
+            std_values = [float(value) for value in raw_image_std]
+            if len(std_values) != 3:
+                raise ValueError(
+                    f"image_std must contain three non-zero values: {tuple(std_values)!r}"
+                )
+            image_std = (std_values[0], std_values[1], std_values[2])
         return cls(
             kind=kind,
             config_file=raw.get("config_file"),
