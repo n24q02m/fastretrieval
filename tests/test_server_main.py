@@ -11,9 +11,23 @@ import pytest
 
 pytest.importorskip("uvicorn", reason="uvicorn belongs to the optional [server] extra")
 
+import fastretrieval
 from fastretrieval.server.__main__ import main  # noqa: E402
 
 MODULE = "fastretrieval.server.api:app"
+
+
+def test_main_version_flag(capsys: pytest.CaptureFixture[str]) -> None:
+    """--version prints prog + version and exits 0 even without uvicorn."""
+    with (
+        patch.dict(sys.modules, {"uvicorn": None}),
+        patch("sys.argv", ["fastretrieval-server", "--version"]),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        main()
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+    assert captured.out.strip() == f"fastretrieval-server {fastretrieval.__version__}"
 
 
 def test_main_uvicorn_import_error() -> None:
