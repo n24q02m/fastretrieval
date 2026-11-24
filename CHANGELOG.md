@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.16.0-beta.2 (2026-11-24)
+
+### Features
+
+- Add --version flag to fastretrieval-server CLI
+  ([#219](https://github.com/n24q02m/fastretrieval/pull/219),
+  [`fb0e9bb`](https://github.com/n24q02m/fastretrieval/commit/fb0e9bbcc36d2d9f51ff45d6b7e72a47121a1252))
+
+
 ## v1.16.0-beta.1 (2026-11-23)
 
 ### Bug Fixes
