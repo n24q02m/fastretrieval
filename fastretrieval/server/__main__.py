@@ -6,6 +6,7 @@ import argparse
 import os
 import sys
 
+from fastretrieval import __version__
 from fastretrieval.common.utils import CACHE_PATH_ENV
 from fastretrieval.server._extra import require_server_extra
 from fastretrieval.server.registry import THREADS_ENV
@@ -15,6 +16,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         prog="fastretrieval-server",
         description="Shared embed/rerank model server for the fastretrieval runtime",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     parser.add_argument(
         "--host",
