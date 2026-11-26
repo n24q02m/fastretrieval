@@ -27,7 +27,6 @@
 | [email](https://github.com/n24q02m/email)                                     | IMAP/SMTP email for AI agents -- read, send, organize folders, and manage att... | MCP         |
 | [fastretrieval](https://github.com/n24q02m/fastretrieval)                     | Fast multi-model retrieval runtime: ONNX and GGUF embeddings, reranking, and ... | Tooling     |
 | [hull](https://github.com/n24q02m/hull)                                       | hull is the shared monorepo core for the wet, crg and mnemo self-hosted stack    | MCP         |
-| [jules-task-archiver](https://github.com/n24q02m/jules-task-archiver)         | Chrome Extension for bulk operations on Jules tasks via batchexecute API -- a... | Tooling     |
 | [mnemo](https://github.com/n24q02m/mnemo)                                     | Persistent AI memory with hybrid search. Open, free, unlimited.                  | MCP         |
 | [notion](https://github.com/n24q02m/notion)                                   | Markdown-first Notion for AI agents -- pages, databases, blocks, and comments... | MCP         |
 | [skret](https://github.com/n24q02m/skret)                                     | Secrets without the server.                                                      | CLI         |
@@ -526,7 +525,7 @@ with a `DeprecationWarning`. Imports of `qwen3_embed` submodules are not forward
 
 Releases are cut only by a manual `workflow_dispatch` of [`.github/workflows/cd.yml`](.github/workflows/cd.yml) with `release_type=beta` or `release_type=stable`; merging to `main` never releases. The workflow runs python-semantic-release (v10) and publishes the version to [PyPI](https://pypi.org/project/fastretrieval/) via Trusted Publishing (`PUBLISH_PYPI=true`). Before any release, the `readme-sync` job verifies that `pyproject.toml` points at the README shipped to the registry, so README edits pass through the same gate. The Docker, MCP-registry, and downstream-notify jobs in the CD template are gated off for this repo (`PUBLISH_DOCKER`, `PUBLISH_MCP_REGISTRY`, and `NOTIFY_DOWNSTREAM` are unset).
 
-The public reference page is [mcp.n24q02m.com/reference/fastretrieval/](https://mcp.n24q02m.com/reference/fastretrieval/). `fastretrieval` is a library: it ships no MCP endpoint and has no hosted deployment.
+The public reference page is [docs.n24q02m.com/fastretrieval/overview/](https://docs.n24q02m.com/fastretrieval/overview/). `fastretrieval` is a library: it ships no MCP endpoint and has no hosted deployment.
 
 ## Related Projects
 
