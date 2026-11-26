@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v1.17.0-beta.1 (2026-11-26)
+
+### Bug Fixes
+
+- Sync Wave 0 README promo, docs links, and mise config
+  ([#222](https://github.com/n24q02m/fastretrieval/pull/222),
+  [`9c29a53`](https://github.com/n24q02m/fastretrieval/commit/9c29a539efa5af19f89795a38f8291f2e589e1e1))
+
+- **deps**: Update minor dependencies ([#216](https://github.com/n24q02m/fastretrieval/pull/216),
+  [`cac2273`](https://github.com/n24q02m/fastretrieval/commit/cac227351b204de616a803a8971778769131776b))
+
+- **deps**: Update patch dependencies ([#220](https://github.com/n24q02m/fastretrieval/pull/220),
+  [`7320236`](https://github.com/n24q02m/fastretrieval/commit/7320236b89129ecf4589c8cf790b9005b460a772))
+
+### Features
+
+- Add reproducible fastembed benchmark suite and comparison results
+  ([#223](https://github.com/n24q02m/fastretrieval/pull/223),
+  [`81aa592`](https://github.com/n24q02m/fastretrieval/commit/81aa592639d9e8cfce62f77ba7ee3d9d2a17820f))
+
+
 ## v1.16.0 (2026-11-25)
 
 ### Bug Fixes
