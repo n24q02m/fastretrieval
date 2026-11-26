@@ -77,6 +77,7 @@ loading an ONNX model raises an `ImportError` that says so.
 - [Migrating from qwen3-embed](#migrating-from-qwen3-embed)
 - [Releases and Deployment](#releases-and-deployment)
 - [Development](#development)
+- [Benchmarks](docs/BENCHMARKS.md)
 - [Related Projects](#related-projects)
 - [Contributing](#contributing)
 - [License](#license)
